@@ -7,53 +7,76 @@ Require Import
   WildCat.Displayed
   WildCat.Universe.
 
-Definition isgraph_equiv_isgraph {A B : Type} `{IsGraph A} (F : A <~> B)
-  : IsGraph B.
+Definition isgraph_equiv_isgraph {A B : Type} `{IsGraph B} (F : A <~> B)
+  : IsGraph A.
 Proof.
   apply Build_IsGraph.
-  intros b c.
-  exact ((F^-1 b) $-> (F^-1 c)).
+  intros a b.
+  exact (F a $-> F b).
 Defined.
 
-Definition is01cat_equiv_is01cat {A B : Type} `{Is01Cat A} `{!IsGraph B}
+(** Defined for an arbitrary graph structure on A *)
+Definition is01cat_equiv_is01cat {A B : Type} `{IsGraph A} `{Is01Cat B}
   (F : A <~> B) `{!Is0Functor F} `{!Is0Functor F^-1}
-  : Is01Cat B.
+  : Is01Cat A.
 Proof.
   apply Build_Is01Cat.
-  - exact (equiv_ind F (fun x => x $-> x) (fun a => fmap F (Id a))).
-  - intros a b c h g.
-    nrefine (transport (fun x => a $-> x) (eisretr F c) _).
-    nrefine (transport (fun x => x $-> F (F^-1 c)) (eisretr F a) _).
-    exact (fmap F (fmap F^-1 h $o fmap F^-1 g)).
+  - intro a.
+    exact (transport (fun x => x $-> x) (eissect F a) (fmap F^-1 (Id (F a)))).
+  - intros a b c g f.
+    nrefine (transport (fun x => a $-> x) (eissect F c) _).
+    nrefine (transport (fun x => x $-> F^-1 (F c)) (eissect F a) _).
+    exact (fmap F^-1 (fmap F g $o fmap F f)).
 Defined.
 
-Definition is2graph_equiv_is2graph {A B : Type} `{Is2Graph A} `{!IsGraph B}
-  (F : A <~> B) `{!Is0Functor F^-1}: Is2Graph B.
+(** Defined only for our isgraph_equiv_isgraph structure on A *)
+Definition is01cat_equiv_is01cat' {A B : Type} `{Is01Cat B} (F : A <~> B)
+  : @Is01Cat A (isgraph_equiv_isgraph F).
 Proof.
-  intros b c.
-  apply Build_IsGraph.
-  intros g h.
-  exact (fmap F^-1 g $-> fmap F^-1 h).
+  apply Build_Is01Cat.
+  - intro a.
+    exact (Id (F a)).
+  - intros a b c g f.
+    exact (cat_comp (A:=B) g f).
 Defined.
 
-Definition is0gpd_equiv_is0gpd {A B : Type} `{Is0Gpd A}
-  `{!IsGraph B, !Is01Cat B} (F : A <~> B) `{!Is0Functor F}
-  `{!Is0Functor F^-1}
-  : Is0Gpd B.
+Definition is2graph_equiv_is2graph {A B : Type} `{IsGraph A} `{Is2Graph B}
+  (F : A <~> B) `{!Is0Functor F}
+  : Is2Graph A.
+Proof.
+  intros a b.
+  apply Build_IsGraph.
+  intros f g.
+  exact (fmap F f $-> fmap F g).
+Defined.
+
+Definition is2graph_equiv_is2graph' {A B : Type} `{Is2Graph B} (F : A <~> B)
+  : @Is2Graph A (isgraph_equiv_isgraph F).
+Proof.
+  intros a b.
+  apply Build_IsGraph.
+  intros f g.
+  exact (@Hom (@Hom B _ _ _) _ f g).
+Defined.
+
+Definition is0gpd_equiv_is0gpd {A B : Type} `{IsGraph A, !Is01Cat A} 
+  `{Is0Gpd B} (F : A <~> B) `{!Is0Functor F} `{!Is0Functor F^-1}
+  : Is0Gpd A.
 Proof.
   srapply Build_Is0Gpd.
-  intros b c g.
-  nrefine (transport (fun x => c $-> x) (eisretr F b) _).
-  nrefine (transport (fun x => x $-> F (F^-1 b)) (eisretr F c) _).
-  exact (fmap F (gpd_rev (fmap F^-1 g))).
+  intros a b f.
+  nrefine (transport (fun x => b $-> x) (eissect F a) _).
+  nrefine (transport (fun x => x $-> F^-1 (F a)) (eissect F b) _).
+  exact (fmap F^-1 (gpd_rev (fmap F f))).
 Defined.
 
-(* Definition is1cat_equiv_is1cat {A B : Type} `{Is1Cat A} *)
-(*   `{IsGraph B, !Is2Graph B, !Is01Cat B} *)
-(*   (F : A <~> B) `{!Is0Functor F} `{!Is0Functor F^-1} *) 
-(*   : Is1Cat B. *)
-(* Proof. *)
-(* Defined. *)
+Definition is0gpd_equiv_is0gpd' {A B : Type} `{Is0Gpd B} (F : A <~> B) 
+  : @Is0Gpd A _ (is01cat_equiv_is01cat' F).
+Proof.
+  srapply Build_Is0Gpd.
+  intros a b f.
+  exact (gpd_rev (A:=B) f).
+Defined.
 
 
 Definition is_pointed (A : Type) := IsPointed A.
@@ -135,12 +158,3 @@ Proof.
   - apply Build_Is0Functor.
     intros Aa Bb f; apply f.
 Defined.
-
-(* Local Instance is1cat_ptype : Is1Cat pType. *)
-(* Proof. *)
-(*   nrapply (is1cat_equiv_is1cat issig_ptype). *)
-(*   - exact (is1cat_sigma is_pointed). *)
-(*   - by apply Build_Is0Functor. *)
-(*   - apply Build_Is0Functor. *)
-(*     intros Aa Bb f; apply f. *)
-(* Defined. *)
