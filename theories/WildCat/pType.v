@@ -6,51 +6,53 @@ Require Import
   WildCat.Displayed
   WildCat.Universe.
 
-Definition isgraph_pullback_isgraph {A B : Type} `{IsGraph B} (F : A -> B)
-  : IsGraph A.
+Definition induced (A : Type) {B : Type} (f : A -> B) := A.
+
+Global Instance isgraph_induced {A B : Type} `{IsGraph B} (f : A -> B)
+  : IsGraph (induced A f).
 Proof.
   nrapply Build_IsGraph.
   intros a b.
-  exact (F a $-> F b).
+  exact (f a $-> f b).
 Defined.
 
-Definition is01cat_pullback_is01cat {A B : Type} `{Is01Cat B} (F : A -> B)
-  : @Is01Cat A (isgraph_pullback_isgraph F).
+Global Instance is01cat_induced {A B : Type} `{Is01Cat B} (f : A -> B)
+  : Is01Cat (induced A f).
 Proof.
   nrapply Build_Is01Cat.
   - intro a.
-    exact (Id (F a)).
+    exact (Id (f a)).
   - intros a b c.
     exact (cat_comp (A:=B)).
 Defined.
 
-Definition is2graph_pullback_is2graph {A B : Type} `{Is2Graph B} (F : A -> B)
-  : @Is2Graph A (isgraph_pullback_isgraph F).
+Global Instance is2graph_induced {A B : Type} `{Is2Graph B} (f : A -> B)
+  : Is2Graph (induced A f).
 Proof.
   intros a b.
-  exact (isgraph_hom (F a) (F b)).
+  exact (isgraph_hom (f a) (f b)).
 Defined.
 
-Definition is0gpd_pullback_is0gpd {A B : Type} `{Is0Gpd B} (F : A -> B)
-  : @Is0Gpd A _ (is01cat_pullback_is01cat F).
+Global Instance is0gpd_induced {A B : Type} `{Is0Gpd B} (f : A -> B)
+  : Is0Gpd (induced A f).
 Proof.
   nrapply Build_Is0Gpd.
-  intros a b f.
-  exact (gpd_rev (A:=B) f).
+  intros a b.
+  exact (gpd_rev (A:=B)).
 Defined.
 
-Definition is1cat_pullback_is1cat {A B : Type} `{ic : Is1Cat B} (F : A -> B)
-  : @Is1Cat A _ (is2graph_pullback_is2graph F) (is01cat_pullback_is01cat F).
+Global Instance is1cat_induced {A B : Type} `{Is1Cat B} (f : A -> B)
+  : Is1Cat (induced A f).
 Proof.
   snrapply Build_Is1Cat.
   - intros a b.
-    exact (is01cat_hom (F a) (F b)).
+    exact (is01cat_hom (f a) (f b)).
   - intros a b.
-    exact (is0gpd_hom (F a) (F b)).
+    exact (is0gpd_hom (f a) (f b)).
   - intros a b c.
-    exact (is0functor_postcomp (F a) (F b) (F c)).
+    exact (is0functor_postcomp (f a) (f b) (f c)).
   - intros a b c.
-    exact (is0functor_precomp (F a) (F b) (F c)).
+    exact (is0functor_precomp (f a) (f b) (f c)).
   - intros a b c d.
     exact (cat_assoc (A:=B)).
   - intros a b.
@@ -118,17 +120,15 @@ Definition issig_ptype : { X : Type & X } <~> pType := ltac:(issig).
 
 Local Instance isgraph_ptype : IsGraph pType.
 Proof.
-  exact (isgraph_pullback_isgraph issig_ptype^-1).
+  exact (isgraph_induced issig_ptype^-1).
 Defined.
 
 Local Instance is01cat_ptype : Is01Cat pType.
 Proof.
-  nrapply (is01cat_pullback_is01cat issig_ptype^-1).
-  - exact (is01cat_sigma IsPointed).
+  exact (is01cat_induced issig_ptype^-1).
 Defined.
 
 Local Instance is2graph_ptype : Is2Graph pType.
 Proof.
-  nrapply (is2graph_pullback_is2graph issig_ptype^-1).
-  - exact (is2graph_sigma IsPointed).
+  exact (is2graph_induced issig_ptype^-1).
 Defined.
