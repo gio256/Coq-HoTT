@@ -4,63 +4,8 @@ Require Import
   Basics.PathGroupoids
   WildCat.Core
   WildCat.Displayed
-  WildCat.Universe.
-
-Definition induced (A : Type) {B : Type} (f : A -> B) := A.
-
-Global Instance isgraph_induced {A B : Type} `{IsGraph B} (f : A -> B)
-  : IsGraph (induced A f).
-Proof.
-  nrapply Build_IsGraph.
-  intros a b.
-  exact (f a $-> f b).
-Defined.
-
-Global Instance is01cat_induced {A B : Type} `{Is01Cat B} (f : A -> B)
-  : Is01Cat (induced A f).
-Proof.
-  nrapply Build_Is01Cat.
-  - intro a.
-    exact (Id (f a)).
-  - intros a b c.
-    exact (cat_comp (A:=B)).
-Defined.
-
-Global Instance is2graph_induced {A B : Type} `{Is2Graph B} (f : A -> B)
-  : Is2Graph (induced A f).
-Proof.
-  intros a b.
-  exact (isgraph_hom (f a) (f b)).
-Defined.
-
-Global Instance is0gpd_induced {A B : Type} `{Is0Gpd B} (f : A -> B)
-  : Is0Gpd (induced A f).
-Proof.
-  nrapply Build_Is0Gpd.
-  intros a b.
-  exact (gpd_rev (A:=B)).
-Defined.
-
-Global Instance is1cat_induced {A B : Type} `{Is1Cat B} (f : A -> B)
-  : Is1Cat (induced A f).
-Proof.
-  snrapply Build_Is1Cat.
-  - intros a b.
-    exact (is01cat_hom (f a) (f b)).
-  - intros a b.
-    exact (is0gpd_hom (f a) (f b)).
-  - intros a b c.
-    exact (is0functor_postcomp (f a) (f b) (f c)).
-  - intros a b c.
-    exact (is0functor_precomp (f a) (f b) (f c)).
-  - intros a b c d.
-    exact (cat_assoc (A:=B)).
-  - intros a b.
-    exact (cat_idl (A:=B)).
-  - intros a b.
-    exact (cat_idr (A:=B)).
-Defined.
-
+  WildCat.Universe
+  WildCat.Induced.
 
 Local Instance isdgraph_pointed : IsDGraph IsPointed.
 Proof.
@@ -118,17 +63,14 @@ Defined.
 
 Definition issig_ptype : { X : Type & X } <~> pType := ltac:(issig).
 
-Local Instance isgraph_ptype : IsGraph pType.
-Proof.
-  exact (isgraph_induced issig_ptype^-1).
-Defined.
+Local Instance isgraph_ptype : IsGraph pType
+  := isgraph_induced issig_ptype^-1.
 
-Local Instance is01cat_ptype : Is01Cat pType.
-Proof.
-  exact (is01cat_induced issig_ptype^-1).
-Defined.
+Local Instance is01cat_ptype : Is01Cat pType
+  := is01cat_induced issig_ptype^-1.
 
-Local Instance is2graph_ptype : Is2Graph pType.
-Proof.
-  exact (is2graph_induced issig_ptype^-1).
-Defined.
+Local Instance is2graph_ptype : Is2Graph pType
+  := is2graph_induced issig_ptype^-1.
+
+Local Instance is1cat_ptype : Is1Cat pType
+  := is1cat_induced issig_ptype^-1.
