@@ -4,6 +4,7 @@ Require Import Basics.Tactics.
 Require Import Types.Sigma.
 Require Import WildCat.Core.
 Require Import WildCat.Prod.
+Require Import WildCat.Equiv.
 
 Class IsDGraph {A : Type} `{IsGraph A} (D : A -> Type)
   := DHom : forall {a b : A}, (a $-> b) -> D a -> D b -> Type.
@@ -461,4 +462,109 @@ Proof.
     exact (dcat_idl f', dcat_idl g').
   - intros ab1 ab2 fg ab1' ab2' [f' g'].
     exact (dcat_idr f', dcat_idr g').
+Defined.
+
+Class DHasEquivs {A : Type} `{HasEquivs A}
+  (D : A -> Type) `{!IsDGraph D, !Is2DGraph D, !Is01DCat D, !Is1DCat D} :=
+{
+  DCatEquiv : forall {a b}, (a $<~> b) -> D a -> D b -> Type;
+  DCatIsEquiv : forall {a b} {f : a $-> b} `{!CatIsEquiv f} {a'} {b'},
+    DHom f a' b' -> Type;
+  dcate_fun : forall {a b} {f : a $<~> b} {a'} {b'},
+    DCatEquiv f a' b' -> DHom f a' b';
+  dcate_isequiv : forall {a b} {f : a $<~> b} {a'} {b'}
+    (f' : DCatEquiv f a' b'), DCatIsEquiv (dcate_fun f');
+  dcate_buildequiv : forall {a b} {f : a $-> b} `{!CatIsEquiv f} {a'} {b'}
+    (f' : DHom f a' b') {fe' : DCatIsEquiv f'}, DCatEquiv (Build_CatEquiv f) a' b';
+  dcate_buildequiv_fun : forall {a b} {f : a $-> b} `{!CatIsEquiv f}
+    {a'} {b'} (f' : DHom f a' b') {fe' : DCatIsEquiv f'},
+    DHom (cate_buildequiv_fun f) (dcate_fun (dcate_buildequiv f' (fe':=fe'))) f';
+  dcate_inv' : forall {a b} {f : a $<~> b} {a'} {b'} (f' : DCatEquiv f a' b'),
+    DHom (cate_inv' _ _ f) b' a';
+  dcate_issect' : forall {a b} {f : a $<~> b} {a'} {b'} (f' : DCatEquiv f a' b'),
+    DHom (cate_issect' _ _ f) (dcate_inv' f' $o' dcate_fun f') (DId a');
+  dcate_isretr' : forall {a b} {f : a $<~> b} {a'} {b'} (f' : DCatEquiv f a' b'),
+    DHom (cate_isretr' _ _ f) (dcate_fun f' $o' dcate_inv' f') (DId b');
+  dcatie_adjointify : forall {a b} {f : a $-> b} {g : b $-> a}
+    {r : f $o g $== Id b} {s : g $o f $== Id a} {a'} {b'} (f' : DHom f a' b')
+    (g' : DHom g b' a') (r' : DHom r (f' $o' g') (DId b'))
+    (s' : DHom s (g' $o' f') (DId a')),
+    @DCatIsEquiv _ _ _ (catie_adjointify f g r s) _ _ f';
+}.
+
+Existing Class DCatIsEquiv.
+Global Existing Instance dcate_isequiv.
+
+Coercion dcate_fun : DCatEquiv >-> DHom.
+
+Definition Build_DCatEquiv {A} {D : A -> Type} `{DHasEquivs A D}
+  {a b : A} {f : a $-> b} `{!CatIsEquiv f} {a' : D a} {b' : D b}
+  (f' : DHom f a' b') {fe' : DCatIsEquiv f'}
+  : DCatEquiv (Build_CatEquiv f) a' b'
+  := dcate_buildequiv f' (fe':=fe').
+
+Definition dcate_adjointify {A} {D : A -> Type} `{DHasEquivs A D}
+  {a b : A} {f : a $-> b} {g : b $-> a}
+  {r : f $o g $== Id b} {s : g $o f $== Id a} {a'} {b'} (f' : DHom f a' b')
+  (g' : DHom g b' a') (r' : DHom r (f' $o' g') (DId b'))
+  (s' : DHom s (g' $o' f') (DId a'))
+  : DCatEquiv (cate_adjointify f g r s) a' b'
+  := Build_DCatEquiv f' (fe':=dcatie_adjointify f' g' r' s').
+
+Definition dcate_inv {A} {D : A -> Type} `{DHasEquivs A D}
+  {a b : A} {f : a $<~> b} {a' : D a} {b' : D b} (f' : DCatEquiv f a' b')
+  : DCatEquiv (f^-1$) b' a'.
+Proof.
+  snrapply dcate_adjointify.
+  - exact (dcate_inv' f').
+  - exact f'.
+  - exact (dcate_issect' f').
+  - exact (dcate_isretr' f').
+Defined.
+
+Notation "f ^-1$'" := (dcate_inv f).
+
+Definition dcate_issect {A} {D : A -> Type} `{DHasEquivs A D}
+  {a b : A} {f : a $<~> b} {a' : D a} {b' : D b} (f' : DCatEquiv f a' b')
+  : DHom (cate_issect f) ((dcate_fun f'^-1$') $o' f') (DId a').
+Proof.
+  refine (_ $@' dcate_issect' f').
+  refine (_ $@R' (dcate_fun f')).
+  apply dcate_buildequiv_fun.
+Defined.
+
+Definition dcate_isretr {A} {D : A -> Type} `{DHasEquivs A D}
+  {a b : A} {f : a $<~> b} {a' : D a} {b' : D b} (f' : DCatEquiv f a' b')
+  : DHom (cate_isretr f) ((dcate_fun f') $o' f'^-1$') (DId b').
+Proof.
+  refine (_ $@' dcate_isretr' f').
+  refine ((dcate_fun f') $@L' _).
+  apply dcate_buildequiv_fun.
+Defined.
+
+Global Instance hasequivs_sigma {A : Type} (D : A -> Type) `{DHasEquivs A D}
+  : HasEquivs (sig D).
+Proof.
+  snrapply Build_HasEquivs.
+  - intros [a a'] [b b'].
+    exact {f : a $<~> b & DCatEquiv f a' b'}.
+  - intros aa' bb' [f f'].
+    exact {fe : CatIsEquiv f & DCatIsEquiv f'}.
+  - intros aa' bb' [f f'].
+    exists f. exact f'.
+  - intros aa' bb' [f f'].
+    exact (cate_isequiv f; dcate_isequiv f').
+  - intros aa' bb' [f f'] [fe fe'].
+    exact (Build_CatEquiv f (fe:=fe); Build_DCatEquiv f' (fe':=fe')).
+  - intros aa' bb' [f f'] fefe'.
+    exists (cate_buildequiv_fun f).
+    exact (dcate_buildequiv_fun f').
+  - intros aa' bb' [f f'].
+    exists (f^-1$). exact (f'^-1$').
+  - intros aa' bb' [f f'].
+    exact (cate_issect f; dcate_issect f').
+  - intros aa' bb' [f f'].
+    exact (cate_isretr f; dcate_isretr f').
+  - intros aa' bb' [f f'] [g g'] [r r'] [s s'].
+    exact (catie_adjointify f g r s; dcatie_adjointify f' g' r' s').
 Defined.
