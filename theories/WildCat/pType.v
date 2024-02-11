@@ -2,10 +2,12 @@ Require Import
   Basics.Overture
   Basics.Tactics
   Basics.PathGroupoids
+  Basics.Equivalences
   WildCat.Core
   WildCat.Displayed
   WildCat.Universe
-  WildCat.Induced.
+  WildCat.Induced
+  WildCat.Equiv.
 
 Local Instance isdgraph_pointed : IsDGraph IsPointed.
 Proof.
@@ -61,6 +63,31 @@ Proof.
   - intros A B f a b f'; reflexivity.
 Defined.
 
+Local Instance dhasequivs_ptype : DHasEquivs IsPointed.
+Proof.
+  snrapply Build_DHasEquivs.
+  all: intros A B f.
+  - exact (DHom f).
+  - intros fe a b f'. exact Unit.
+  - intros a b. exact idmap.
+  - intros a b f'. exact tt.
+  - intros fe a b. exact const.
+  - intros fe a b f' ?. exact (DGpdHom_path idpath 1).
+  - intros a b f'. exact (moveR_equiv_V _ _ f'^).
+  - intros a b f'.
+    destruct f'.
+    apply moveR_pM.
+    symmetry.
+    exact (concat_p1 _ @ concat_1p _ @ concat_1p _).
+  - intros a b f'.
+    apply moveR_pM.
+    destruct f'.
+    refine (eisadj f _ @ _).
+    symmetry.
+    exact (concat_p1 _ @ concat_p1 _ @ ap _ (concat_1p _)).
+  - intros. exact tt.
+Defined.
+
 Definition issig_ptype : { X : Type & X } <~> pType := ltac:(issig).
 
 Local Instance isgraph_ptype : IsGraph pType
@@ -74,3 +101,6 @@ Local Instance is2graph_ptype : Is2Graph pType
 
 Local Instance is1cat_ptype : Is1Cat pType
   := is1cat_induced issig_ptype^-1.
+
+Local Instance hasequivs_ptype : HasEquivs pType
+  := hasequivs_induced issig_ptype^-1.
