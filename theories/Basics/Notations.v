@@ -178,6 +178,7 @@ Reserved Infix "$@'" (at level 30).
 Reserved Infix "$@L'" (at level 30).
 Reserved Infix "$@R'" (at level 30).
 Reserved Infix "$@@'" (at level 30).
+Reserved Infix "$oE'" (at level 40, left associativity).
 Reserved Notation "f ^$'" (at level 3, format "f '^$''").
 Reserved Notation "f ^-1$'" (at level 3, format "f '^-1$''").
 

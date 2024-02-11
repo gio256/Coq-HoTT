@@ -464,34 +464,38 @@ Proof.
     exact (dcat_idr f', dcat_idr g').
 Defined.
 
+(** Displayed equivalences in wild categories *)
 Class DHasEquivs {A : Type} `{HasEquivs A}
   (D : A -> Type) `{!IsDGraph D, !Is2DGraph D, !Is01DCat D, !Is1DCat D} :=
 {
   DCatEquiv : forall {a b}, (a $<~> b) -> D a -> D b -> Type;
-  DCatIsEquiv : forall {a b} {f : a $-> b} `{!CatIsEquiv f} {a'} {b'},
+  DCatIsEquiv : forall {a b} {f : a $-> b} {fe : CatIsEquiv f} {a'} {b'},
     DHom f a' b' -> Type;
   dcate_fun : forall {a b} {f : a $<~> b} {a'} {b'},
     DCatEquiv f a' b' -> DHom f a' b';
   dcate_isequiv : forall {a b} {f : a $<~> b} {a'} {b'}
     (f' : DCatEquiv f a' b'), DCatIsEquiv (dcate_fun f');
   dcate_buildequiv : forall {a b} {f : a $-> b} `{!CatIsEquiv f} {a'} {b'}
-    (f' : DHom f a' b') {fe' : DCatIsEquiv f'}, DCatEquiv (Build_CatEquiv f) a' b';
+    (f' : DHom f a' b') {fe' : DCatIsEquiv f'},
+    DCatEquiv (Build_CatEquiv f) a' b';
   dcate_buildequiv_fun : forall {a b} {f : a $-> b} `{!CatIsEquiv f}
     {a'} {b'} (f' : DHom f a' b') {fe' : DCatIsEquiv f'},
-    DHom (cate_buildequiv_fun f) (dcate_fun (dcate_buildequiv f' (fe':=fe'))) f';
+    DGpdHom (cate_buildequiv_fun f)
+    (dcate_fun (dcate_buildequiv f' (fe':=fe'))) f';
   dcate_inv' : forall {a b} {f : a $<~> b} {a'} {b'} (f' : DCatEquiv f a' b'),
     DHom (cate_inv' _ _ f) b' a';
   dcate_issect' : forall {a b} {f : a $<~> b} {a'} {b'} (f' : DCatEquiv f a' b'),
-    DHom (cate_issect' _ _ f) (dcate_inv' f' $o' dcate_fun f') (DId a');
+    DGpdHom (cate_issect' _ _ f) (dcate_inv' f' $o' dcate_fun f') (DId a');
   dcate_isretr' : forall {a b} {f : a $<~> b} {a'} {b'} (f' : DCatEquiv f a' b'),
-    DHom (cate_isretr' _ _ f) (dcate_fun f' $o' dcate_inv' f') (DId b');
+    DGpdHom (cate_isretr' _ _ f) (dcate_fun f' $o' dcate_inv' f') (DId b');
   dcatie_adjointify : forall {a b} {f : a $-> b} {g : b $-> a}
     {r : f $o g $== Id b} {s : g $o f $== Id a} {a'} {b'} (f' : DHom f a' b')
-    (g' : DHom g b' a') (r' : DHom r (f' $o' g') (DId b'))
-    (s' : DHom s (g' $o' f') (DId a')),
+    (g' : DHom g b' a') (r' : DGpdHom r (f' $o' g') (DId b'))
+    (s' : DGpdHom s (g' $o' f') (DId a')),
     @DCatIsEquiv _ _ _ (catie_adjointify f g r s) _ _ f';
 }.
 
+(** Being an equivalence is a typeclass *)
 Existing Class DCatIsEquiv.
 Global Existing Instance dcate_isequiv.
 
@@ -511,6 +515,7 @@ Definition dcate_adjointify {A} {D : A -> Type} `{DHasEquivs A D}
   : DCatEquiv (cate_adjointify f g r s) a' b'
   := Build_DCatEquiv f' (fe':=dcatie_adjointify f' g' r' s').
 
+(** Constructs the whole inverse equivalence *)
 Definition dcate_inv {A} {D : A -> Type} `{DHasEquivs A D}
   {a b : A} {f : a $<~> b} {a' : D a} {b' : D b} (f' : DCatEquiv f a' b')
   : DCatEquiv (f^-1$) b' a'.
@@ -526,7 +531,7 @@ Notation "f ^-1$'" := (dcate_inv f).
 
 Definition dcate_issect {A} {D : A -> Type} `{DHasEquivs A D}
   {a b : A} {f : a $<~> b} {a' : D a} {b' : D b} (f' : DCatEquiv f a' b')
-  : DHom (cate_issect f) ((dcate_fun f'^-1$') $o' f') (DId a').
+  : DHom (cate_issect f) (dcate_fun f'^-1$' $o' f') (DId a').
 Proof.
   refine (_ $@' dcate_issect' f').
   refine (_ $@R' (dcate_fun f')).
@@ -535,36 +540,117 @@ Defined.
 
 Definition dcate_isretr {A} {D : A -> Type} `{DHasEquivs A D}
   {a b : A} {f : a $<~> b} {a' : D a} {b' : D b} (f' : DCatEquiv f a' b')
-  : DHom (cate_isretr f) ((dcate_fun f') $o' f'^-1$') (DId b').
+  : DHom (cate_isretr f) (dcate_fun f' $o' f'^-1$') (DId b').
 Proof.
   refine (_ $@' dcate_isretr' f').
-  refine ((dcate_fun f') $@L' _).
+  refine (dcate_fun f' $@L' _).
   apply dcate_buildequiv_fun.
 Defined.
 
-Global Instance hasequivs_sigma {A : Type} (D : A -> Type) `{DHasEquivs A D}
+(** If the base category has equivalences and the displayed category has displayed equivalences, then the total category has equivalences. *)
+Global Instance hasequivs_sigma {A} (D : A -> Type) `{DHasEquivs A D}
   : HasEquivs (sig D).
 Proof.
   snrapply Build_HasEquivs.
-  - intros [a a'] [b b'].
-    exact {f : a $<~> b & DCatEquiv f a' b'}.
-  - intros aa' bb' [f f'].
-    exact {fe : CatIsEquiv f & DCatIsEquiv f'}.
-  - intros aa' bb' [f f'].
-    exists f. exact f'.
-  - intros aa' bb' [f f'].
-    exact (cate_isequiv f; dcate_isequiv f').
-  - intros aa' bb' [f f'] [fe fe'].
+  1:{ intros [a a'] [b b']. exact {f : a $<~> b & DCatEquiv f a' b'}. }
+  all: intros aa' bb' [f f'].
+  - exact {fe : CatIsEquiv f & DCatIsEquiv f'}.
+  - exists f. exact f'.
+  - exact (cate_isequiv f; dcate_isequiv f').
+  - intros [fe fe'].
     exact (Build_CatEquiv f (fe:=fe); Build_DCatEquiv f' (fe':=fe')).
-  - intros aa' bb' [f f'] fefe'.
-    exists (cate_buildequiv_fun f).
+  - intros ?; exists (cate_buildequiv_fun f).
     exact (dcate_buildequiv_fun f').
-  - intros aa' bb' [f f'].
-    exists (f^-1$). exact (f'^-1$').
-  - intros aa' bb' [f f'].
-    exact (cate_issect f; dcate_issect f').
-  - intros aa' bb' [f f'].
-    exact (cate_isretr f; dcate_isretr f').
-  - intros aa' bb' [f f'] [g g'] [r r'] [s s'].
+  - exists (f^-1$). exact (f'^-1$').
+  - exact (cate_issect f; dcate_issect f').
+  - exact (cate_isretr f; dcate_isretr f').
+  - intros [g g'] [r r'] [s s'].
     exact (catie_adjointify f g r s; dcatie_adjointify f' g' r' s').
+Defined.
+
+(** The identity morphism is an equivalence *)
+Global Instance dcatie_id {A} {D : A -> Type} `{DHasEquivs A D}
+  {a : A} (a' : D a)
+  : DCatIsEquiv (DId a')
+  := dcatie_adjointify (DId a') (DId a') (dcat_idl (DId a')) (dcat_idl (DId a')).
+
+Definition id_dcate {A} {D : A -> Type} `{DHasEquivs A D}
+  {a : A} (a' : D a)
+  : DCatEquiv (id_cate a) a' a'
+  := Build_DCatEquiv (DId a').
+
+Global Instance compose_dcatie {A} {D : A -> Type} `{DHasEquivs A D}
+  {a b c : A} {g : b $<~> c} {f : a $<~> b} {a' : D a} {b' : D b} {c' : D c}
+  (g' : DCatEquiv g b' c') (f' : DCatEquiv f a' b')
+  : DCatIsEquiv (dcate_fun g' $o' f').
+Proof.
+  snrapply dcatie_adjointify.
+  - exact (dcate_fun f'^-1$' $o' g'^-1$').
+  - refine (dcat_assoc _ _ _ $@' _).
+    refine (_ $@L' dcat_assoc_opp _ _ _ $@' _).
+    refine (_ $@L' (dcate_isretr _ $@R' _) $@' _).
+    refine (_ $@L' dcat_idl _ $@' _).
+    apply dcate_isretr.
+  - refine (dcat_assoc _ _ _ $@' _).
+    refine (_ $@L' dcat_assoc_opp _ _ _ $@' _).
+    refine (_ $@L' (dcate_issect _ $@R' _) $@' _).
+    refine (_ $@L' dcat_idl _ $@' _).
+    apply dcate_issect.
+Defined.
+
+Definition compose_dcate {A} {D : A -> Type} `{DHasEquivs A D}
+  {a b c : A} {g : b $<~> c} {f : a $<~> b} {a' : D a} {b' : D b} {c' : D c}
+  (g' : DCatEquiv g b' c') (f' : DCatEquiv f a' b')
+  : DCatEquiv (compose_cate g f) a' c'
+  := Build_DCatEquiv (dcate_fun g' $o' f').
+
+Notation "g $oE' f" := (compose_dcate g f).
+
+Definition compose_dcate_fun {A} {D : A -> Type} `{DHasEquivs A D}
+  {a b c : A} {g : b $<~> c} {f : a $<~> b} {a' : D a} {b' : D b} {c' : D c}
+  (g' : DCatEquiv g b' c') (f' : DCatEquiv f a' b')
+  : DGpdHom (compose_cate_fun g f) (dcate_fun (g' $oE' f')) (dcate_fun g' $o' f')
+  := dcate_buildequiv_fun _.
+
+Definition compose_dcate_funinv {A} {D : A -> Type} `{DHasEquivs A D}
+  {a b c : A} {g : b $<~> c} {f : a $<~> b} {a' : D a} {b' : D b} {c' : D c}
+  (g' : DCatEquiv g b' c') (f' : DCatEquiv f a' b')
+  : DGpdHom (compose_cate_funinv g f) (dcate_fun g' $o' f') (dcate_fun (g' $oE' f')).
+Proof.
+  apply dgpd_rev.
+  apply dcate_buildequiv_fun.
+Defined.
+
+Definition id_cate_fun {A} {D : A -> Type} `{DHasEquivs A D} {a : A} (a' : D a)
+  : DGpdHom (id_cate_fun a) (dcate_fun (id_dcate a')) (DId a')
+  := dcate_buildequiv_fun _.
+
+Definition compose_dcate_assoc {A} {D : A -> Type} `{DHasEquivs A D}
+  {a b c d : A} {f : a $<~> b} {g : b $<~> c} {h : c $<~> d} {a'} {b'} {c'} {d'}
+  (f' : DCatEquiv f a' b') (g' : DCatEquiv g b' c') (h' : DCatEquiv h c' d')
+  : DGpdHom (compose_cate_assoc f g h) (dcate_fun ((h' $oE' g') $oE' f'))
+    (dcate_fun (h' $oE' (g' $oE' f'))).
+Proof.
+  refine (compose_dcate_fun _ f' $@' _ $@' dcat_assoc (dcate_fun f') g' h'
+          $@' _ $@' compose_dcate_funinv h' _).
+  - apply (compose_dcate_fun h' g' $@R' _).
+  - apply (_ $@L' compose_dcate_funinv g' f').
+Defined.
+
+Definition compose_dcate_idl {A} {D : A -> Type} `{DHasEquivs A D}
+  {a b : A} {f : a $<~> b}  {a' : D a} {b' : D b} (f' : DCatEquiv f a' b')
+  : DGpdHom (compose_cate_idl f) (dcate_fun (id_dcate b' $oE' f'))
+    (dcate_fun f').
+Proof.
+  refine (compose_dcate_fun _ f' $@' _ $@' dcat_idl (dcate_fun f')).
+  apply (dcate_buildequiv_fun _ $@R' _).
+Defined.
+
+Definition compose_dcate_idr {A} {D : A -> Type} `{DHasEquivs A D}
+  {a b : A} {f : a $<~> b} {a' : D a} {b' : D b} (f' : DCatEquiv f a' b')
+  : DGpdHom (compose_cate_idr f) (dcate_fun (f' $oE' id_dcate a'))
+    (dcate_fun f').
+Proof.
+  refine (compose_dcate_fun f' _ $@' _ $@' dcat_idr (dcate_fun f')).
+  apply (_ $@L' dcate_buildequiv_fun _).
 Defined.
