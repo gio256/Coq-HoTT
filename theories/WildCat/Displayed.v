@@ -106,7 +106,7 @@ Global Existing Instance is0dgpd_dhom.
 Global Existing Instance is0dfunctor_postcomp.
 Global Existing Instance is0dfunctor_precomp.
 
-Definition dcat_assoc_opp {A : Type} (D : A -> Type) `{Is1DCat A D}
+Definition dcat_assoc_opp {A : Type} {D : A -> Type} `{Is1DCat A D}
   {a b c d : A}  {f : a $-> b} {g : b $-> c} {h : c $-> d}
   {a' : D a} {b' : D b} {c' : D c} {d' : D d}
   (f' : DHom f a' b') (g' : DHom g b' c') (h' : DHom h c' d')
@@ -263,7 +263,7 @@ Global Existing Instance is0dgpd_dhom_strong.
 Global Existing Instance is0dfunctor_postcomp_strong.
 Global Existing Instance is0dfunctor_precomp_strong.
 
-Definition dcat_assoc_opp_strong {A : Type} (D : A -> Type) `{Is1DCat_Strong A D}
+Definition dcat_assoc_opp_strong {A : Type} {D : A -> Type} `{Is1DCat_Strong A D}
   {a b c d : A}  {f : a $-> b} {g : b $-> c} {h : c $-> d}
   {a' : D a} {b' : D b} {c' : D c} {d' : D d}
   (f' : DHom f a' b') (g' : DHom g b' c') (h' : DHom h c' d')
