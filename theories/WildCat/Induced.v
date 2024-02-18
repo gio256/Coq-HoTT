@@ -1,6 +1,6 @@
 (* -*- mode: coq; mode: visual-line -*-  *)
 
-Require Import Basics.Overture Basics.Tactics.
+Require Import Basics.Overture Basics.Tactics Basics.Equivalences.
 Require Import WildCat.Core.
 Require Import WildCat.Equiv.
 
@@ -20,7 +20,7 @@ Section Induced_category.
   Local Instance isgraph_induced `{IsGraph B} : IsGraph A.
   Proof.
     nrapply Build_IsGraph.
-    intros a1 a2. 
+    intros a1 a2.
     exact (f a1 $-> f a2).
   Defined.
 
@@ -69,12 +69,12 @@ Section Induced_category.
     + intros g h. exact (Id _).
   Defined.
 
-  Instance hasmorext_induced `{HasMorExt B} : HasMorExt A.
+  Local Instance hasmorext_induced `{HasMorExt B} : HasMorExt A.
   Proof.
     constructor. intros_of_type A; cbn. rapply isequiv_Htpy_path.
   Defined.
 
-  Definition hasequivs_induced `{HasEquivs B} : HasEquivs A.
+  Local Instance hasequivs_induced `{HasEquivs B} : HasEquivs A.
   Proof.
     srapply Build_HasEquivs; intros a b; cbn.
     + exact (f a $<~> f b).
@@ -87,6 +87,14 @@ Section Induced_category.
     + nrapply cate_issect'.
     + nrapply cate_isretr'.
     + nrapply catie_adjointify'.
+  Defined.
+
+  Definition isunivalent1cat_induced `{IsUnivalent1Cat B} `{!IsEquiv f}
+    : IsUnivalent1Cat A.
+  Proof.
+    snrapply Build_IsUnivalent1Cat; intros_of_type A.
+    srapply (isequiv_homotopic (cat_equiv_path (f _) (f _) o ap f)).
+    intros []; reflexivity.
   Defined.
 
 End Induced_category.

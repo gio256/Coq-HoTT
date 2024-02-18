@@ -495,7 +495,7 @@ Defined.
 
 Class IsDUnivalent1Cat {A} (D : A -> Type) `{DHasEquivs A D} :=
 {
-  isequiv_dcat_equiv_path : forall {a b : A} (p : a = b) a' b',
+  isequiv_dcat_equiv_path : forall {a b : A} (p : a = b) (a' : D a) (b' : D b),
     IsEquiv (dcat_equiv_path p a' b')
 }.
 Global Existing Instance isequiv_dcat_equiv_path.
@@ -522,4 +522,20 @@ Proof.
   apply (isequiv_homotopic
           (dcat_equiv_path_sigma _ _ o (path_sigma_uncurried D aa' bb')^-1)).
   intros []; reflexivity.
+Defined.
+
+Class IsDUnivalentId {A} (D : A -> Type) `{DHasEquivs A D} :=
+{
+  isequiv_dcat_equiv_path_id : forall {a : A} (a' b' : D a),
+    IsEquiv (dcat_equiv_path (idpath a) a' b')
+}.
+Global Existing Instance isequiv_dcat_equiv_path_id.
+
+Global Instance isdunivalent1cat_isdunivalentid {A} (D : A -> Type)
+  `{IsDUnivalentId A D}
+  : IsDUnivalent1Cat D.
+Proof.
+  apply Build_IsDUnivalent1Cat.
+  intros a b [].
+  exact isequiv_dcat_equiv_path_id.
 Defined.
