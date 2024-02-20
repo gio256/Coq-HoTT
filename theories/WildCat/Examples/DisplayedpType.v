@@ -91,8 +91,7 @@ Proof.
   - intros. exact tt.
 Defined.
 
-Local Instance isdunivalentid_pointed `{Univalence}
-  : IsDUnivalentId IsPointed.
+Local Instance isdunivalentid_pointed : IsDUnivalentId IsPointed.
 Proof.
   snrapply Build_IsDUnivalentId.
   intros A a b.
@@ -129,4 +128,4 @@ Local Instance hasequivs_ptype : HasEquivs pType
   := hasequivs_induced issig_ptype^-1.
 
 Local Instance isunivalent1cat_ptype `{Univalence} : IsUnivalent1Cat pType
-  :=isunivalent1cat_induced issig_ptype^-1.
+  := isunivalent1cat_induced issig_ptype^-1.
