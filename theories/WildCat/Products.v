@@ -19,22 +19,23 @@ Defined.
 (* A product of an [I]-indexed family of objects of a category is an object of the category with an [I]-indexed family of projections such that the induced map is an equivalence. *)
 Class Product (I : Type) {A : Type} `{Is1Cat A} {x : I -> A} := Build_Product' {
   cat_prod : A;
-  cat_pr : forall i, cat_prod $-> x i;
+  cat_pr : forall (i : I), cat_prod $-> x i;
   cat_isequiv_cat_prod_corec_inv
-    :: forall z, CatIsEquiv (cat_prod_corec_inv cat_prod x z cat_pr);
+    :: forall (z : A), CatIsEquiv (cat_prod_corec_inv cat_prod x z cat_pr);
 }.
 
 Arguments Product I {A _ _ _ _} x.
 Arguments cat_prod I {A _ _ _ _} x {_}.
 
-(** This is a convenience wrapper for building Products *)
+(** A convenience wrapper for building Products *)
 Definition Build_Product (I : Type) {A : Type} `{Is1Cat A} {x : I -> A}
-  (cat_prod : A) (cat_pr : forall i, cat_prod $-> x i)
-  (cat_prod_corec : forall (z : A), (forall i, z $-> x i) -> (z $-> cat_prod))
-  (cat_prod_beta_pr : forall z (f : forall i, z $-> x i) i,
+  (cat_prod : A) (cat_pr : forall (i : I), cat_prod $-> x i)
+  (cat_prod_corec : forall (z : A),
+    (forall (i : I), z $-> x i) -> (z $-> cat_prod))
+  (cat_prod_beta_pr : forall (z : A) (f : forall i, z $-> x i) (i : I),
     cat_pr i $o cat_prod_corec z f $== f i)
-  (cat_prod_eta_pr : forall z (f g : z $-> cat_prod),
-    (forall i, cat_pr i $o f $== cat_pr i $o g) -> f $== g)
+  (cat_prod_eta_pr : forall (z : A) (f g : z $-> cat_prod),
+    (forall (i : I), cat_pr i $o f $== cat_pr i $o g) -> f $== g)
   : Product I x.
 Proof.
   snrapply (Build_Product' I A _ _ _ _ _ cat_prod cat_pr).
@@ -214,14 +215,6 @@ Class HasProducts (I A : Type) `{Is1Cat A} :=
 Class HasAllProducts (A : Type) `{Is1Cat A} :=
   has_all_products :: forall (I : Type), HasProducts I A.
 
-Local Instance is2graph_arrow {A B : Type} : Is2Graph (A $-> B).
-Proof.
-  intros f g.
-  apply Build_IsGraph.
-  intros p q.
-  exact (forall x, p x = q x).
-Defined.
-
 Global Instance is0functor_cat_prod (I : Type) `{IsGraph I}
   (A : Type) `{HasProducts I A}
   : Is0Functor (fun x : Fun01 I A => cat_prod I x).
@@ -256,7 +249,7 @@ Defined.
 
 (** *** Categories with specific kinds of products *)
 
-Definition terminal_equiv_emptyproduct {A : Type}
+Definition prodempty_equiv_terminal {A : Type}
   `{HasProducts Empty A, !HasEquivs A} (z : A) `{!IsTerminal z}
   : z $<~> cat_prod Empty (fun _ => z).
 Proof.
@@ -267,15 +260,19 @@ Proof.
   - exact ((mor_terminal_unique z z _)^$ $@ mor_terminal_unique z z (Id z)).
 Defined.
 
+(** *** Binary products *)
+
+Class BinaryProduct {A : Type} `{Is1Cat A} (x y : A)
+  := binary_product :: Product Bool (fun b => if b then x else y).
 
 (** A category with binary products is a category with a binary product for each pair of objects. *)
-Class HasBinaryProducts (A : Type) `{Is1Cat A} :=
-  binary_products :: forall x y : A, Product Bool (fun b => if b then x else y)
-.
+Class HasBinaryProducts (A : Type) `{Is1Cat A}
+  := has_binary_products :: forall x y : A, BinaryProduct x y.
 
 Section BinaryProducts.
 
-  Context {A : Type} `{Is1Cat A} {x y : A} {B : Product (A:=A) Bool (fun b => if b then x else y)}.
+  Context {A : Type} `{Is1Cat A} {x y : A} {B : BinaryProduct x y}.
+  (* Context {A : Type} `{Is1Cat A} {x y : A} {B : Product (A:=A) Bool (fun b => if b then x else y)}. *)
 
   Definition cat_binprod : A
     := cat_prod Bool (fun b : Bool => if b then x else y).
@@ -441,10 +438,9 @@ Section Symmetry2.
 
   (** Here is an alternative proof of symmetry of products using the symmetry of the indexing set. It has the same action on products but this result is more general since it doesn't require the existence of all products. *)
 
-  Context {A : Type} `{HasEquivs A} (x y : A)
-    (B : Product Bool (fun b => if b then x else y)).
+  Context {A : Type} `{HasEquivs A} (x y : A) (B : BinaryProduct x y).
 
-  Local Instance product_swap : Product Bool (fun b => if b then y else x).
+  Local Instance product_swap : BinaryProduct y x.
   Proof.
     snrapply Build_BinaryProduct.
     - exact (cat_binprod x y).
