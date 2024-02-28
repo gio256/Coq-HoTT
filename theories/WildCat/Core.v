@@ -74,6 +74,12 @@ Global Instance symmetric_GpdHom' {A} `{Is0Gpd A}
   : Symmetric Hom
   := fun a b f => f^$.
 
+Definition Hom_path {A : Type} `{Is01Cat A} {a b : A} (p : a = b)
+  : (a $-> b).
+Proof.
+  destruct p; apply Id.
+Defined.
+
 Definition GpdHom_path {A} `{Is0Gpd A} {a b : A} (p : a = b)
   : a $== b.
 Proof.

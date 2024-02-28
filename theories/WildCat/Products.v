@@ -1,7 +1,9 @@
-Require Import Basics EquivGpd.
+Require Import Basics.
+Require Import EquivGpd.
 Require Import Types.Prod Types.Bool.
 Require Import WildCat.Core WildCat.ZeroGroupoid WildCat.Equiv WildCat.Yoneda
-               WildCat.Universe WildCat.NatTrans WildCat.Opposite.
+               WildCat.Universe WildCat.NatTrans WildCat.Opposite
+               WildCat.FunctorCat.
 
 (** * Categories with products *)
 
@@ -53,10 +55,8 @@ Section Lemmata.
   Context (I : Type) {A : Type} {x : I -> A} `{Product I _ x}.
 
   Definition cate_cat_prod_corec_inv {z : A}
-    : (yon_0gpd (cat_prod I x) z) $<~> prod_0gpd I (fun i => yon_0gpd (x i) z).
-  Proof.
-    srapply Build_CatEquiv.
-  Defined.
+    : (yon_0gpd (cat_prod I x) z) $<~> prod_0gpd I (fun i => yon_0gpd (x i) z)
+    := Build_CatEquiv (cat_prod_corec_inv (cat_prod I x) x z cat_pr).
 
   Definition cate_cat_prod_corec {z : A}
     : prod_0gpd I (fun i => yon_0gpd (x i) z) $<~> (yon_0gpd (cat_prod I x) z)
@@ -124,11 +124,6 @@ Section Lemmata.
       cat_pr).
   Defined.
 
-  Definition natequiv_cat_prod_corec
-    : NatEquiv (fun z : A^op => prod_0gpd I (fun i => yon_0gpd (x i) z))
-      (yon_0gpd (cat_prod I x))
-    := natequiv_inverse (natequiv_cat_prod_corec_inv).
-
   Lemma cat_prod_corec_eta {z : A} {f f' : forall i, z $-> x i}
     : (forall i, f i $== f' i) -> cat_prod_corec f $== cat_prod_corec f'.
   Proof.
@@ -151,26 +146,12 @@ End Lemmata.
 
 (** *** Diagonal map *)
 
-Definition cat_prod_diag {I : Type} {A : Type} `{Is1Cat A} (x : A) `{!Product I (fun _ => x)}
+Definition cat_prod_diag {I : Type} {A : Type} (x : A)
+  `{Product I _ (fun _ => x)}
   : x $-> cat_prod I (fun _ => x)
   := cat_prod_corec I (fun _ => Id _).
 
-Definition cat_hom_path {A : Type} `{Is01Cat A} {a b : A}
-  : (a = b) -> (a $-> b).
-Proof.
-  intros []; reflexivity.
-Defined.
-
-Definition compose_cat_hom_path {A : Type} `{Is1Cat A} {a b c : A}
-  (p : a = b) (q : b = c)
-  : cat_hom_path q $o cat_hom_path p $== cat_hom_path (p @ q).
-Proof.
-  destruct p, q; apply cat_idl.
-Defined.
-
 (** *** Uniqueness of products *)
-
-(** TODO: This bit needs to be cleaned up, the proofs are not great *)
 
 Section Uniqueness.
 
@@ -182,12 +163,11 @@ Section Uniqueness.
     snrapply cate_adjointify.
     - snrapply Build_Morphism_0Gpd.
       + intros h j.
-        Check (eisretr ie j).
         exact (transport H (eisretr ie j) (cate_fun (f (ie^-1 j)) (h _))).
       + nrapply Build_Is0Functor.
         intros g h p j.
         destruct (eisretr ie j).
-        refine (_ $o cat_hom_path (transport_1 _ _)).
+        refine (_ $o Hom_path (transport_1 _ _)).
         apply Build_Morphism_0Gpd.
         exact (p _).
     - nrapply equiv_prod_0gpd_corec.
@@ -198,7 +178,8 @@ Section Uniqueness.
       destruct (eisretr ie j).
       exact (cate_isretr (f _) _).
     - intros g i.
-      refine (_ $o cat_hom_path
+      cbn.
+      refine (_ $o Hom_path
               (ap (cate_fun (f i)^-1$) (transport2 _ (eisadj ie i) _))).
       destruct (eissect ie i).
       exact (cate_issect (f _) _).
@@ -212,7 +193,8 @@ Section Uniqueness.
   Proof.
     apply yon_equiv_0gpd.
     nrefine (natequiv_compose _ (natequiv_cat_prod_corec_inv _)).
-    nrefine (natequiv_compose (natequiv_cat_prod_corec _) _).
+    nrefine (natequiv_compose
+              (natequiv_inverse (natequiv_cat_prod_corec_inv _)) _).
     snrapply Build_NatEquiv.
     - intros z.
       nrapply (cate_prod_0gpd ie).
@@ -240,39 +222,37 @@ Proof.
   exact (forall x, p x = q x).
 Defined.
 
-Global Instance is0functor_cat_prod (I : Type) {A : Type} `{HasProducts I A}
-  : Is0Functor (fun x => cat_prod I x).
+Global Instance is0functor_cat_prod (I : Type) `{IsGraph I}
+  (A : Type) `{HasProducts I A}
+  : Is0Functor (fun x : Fun01 I A => cat_prod I x).
 Proof.
   nrapply Build_Is0Functor.
   intros x y f.
-  nrapply cat_prod_corec.
-  intros i.
-  exact (cat_hom_path (f i) $o cat_pr i).
+  exact (cat_prod_corec I (fun i => f i $o cat_pr i)).
 Defined.
 
-Global Instance is1functor_cat_prod {I A : Type} `{HasProducts I A}
-  `{!Is1Cat (I -> A)}
-  : Is1Functor (fun x => cat_prod I x).
+Global Instance is1functor_cat_prod (I : Type) `{IsGraph I}
+  (A : Type) `{HasProducts I A}
+  : Is1Functor (fun x : Fun01 I A => cat_prod I x).
 Proof.
   nrapply Build_Is1Functor.
   - intros x y f g p.
-    nrapply cat_prod_corec_eta.
-    intros i; destruct (p i).
-    reflexivity.
+    exact (cat_prod_corec_eta I (fun i => p i $@R cat_pr i)).
   - intros x.
-    refine (_ $@ (cat_prod_eta _ _)).
-    exact (cat_prod_corec_eta _ (fun i => cat_idl _ $@ (cat_idr _)^$)).
+    nrefine (_ $@ (cat_prod_eta I (Id _))).
+    exact (cat_prod_corec_eta I (fun i => cat_idl _ $@ (cat_idr _)^$)).
   - intros x y z f g.
-    apply cat_prod_pr_eta; intros i.
-    refine (cat_prod_beta _ _ _ $@ _).
-    refine (_ $@ cat_assoc _ _ _).
+    apply cat_prod_pr_eta.
+    intros i.
+    nrefine (cat_prod_beta _ _ _ $@ _).
+    nrefine (_ $@ cat_assoc _ _ _).
     symmetry.
-    refine (cat_prod_beta _ _ _ $@R _ $@ _).
-    refine (cat_assoc _ _ _ $@ _).
-    refine (_ $@L cat_prod_beta _ _ _ $@ _).
-    refine (cat_assoc_opp _ _ _ $@ _).
-    exact (compose_cat_hom_path _ _ $@R _).
+    nrefine (cat_prod_beta _ _ _ $@R _ $@ _).
+    nrefine (cat_assoc _ _ _ $@ _).
+    nrefine (_ $@L cat_prod_beta _ _ _ $@ _).
+    apply cat_assoc_opp.
 Defined.
+
 
 (** *** Categories with specific kinds of products *)
 
