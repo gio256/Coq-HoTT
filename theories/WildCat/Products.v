@@ -267,13 +267,6 @@ Class BinaryProduct {A : Type} `{Is1Cat A} (x y : A)
 Class HasBinaryProducts (A : Type) `{Is1Cat A}
   := has_binary_products :: forall x y : A, BinaryProduct x y.
 
-Global Instance hasbinaryproducts_hasproductsbool {A : Type} `{HasProducts Bool A}
-  : HasBinaryProducts A.
-Proof.
-  intros x y.
-  exact (has_products _).
-Defined.
-
 Section BinaryProducts.
 
   Context {A : Type} `{Is1Cat A} {x y : A} {B : BinaryProduct x y}.
@@ -358,6 +351,33 @@ Proof.
     apply cat_binprod_corec.
     + exact (f true).
     + exact (f false).
+  - intros z f [|].
+    + apply cat_binprod_beta_pr1.
+    + apply cat_binprod_beta_pr2.
+  - intros z f g p.
+    apply cat_binprod_eta_pr.
+    + exact (p true).
+    + exact (p false).
+Defined.
+
+Global Instance hasbinaryproducts_hasproductsbool {A : Type} `{HasProducts Bool A}
+  : HasBinaryProducts A.
+Proof.
+  intros x y.
+  exact (has_products _).
+Defined.
+
+Definition hasproductsbool_hasbinaryproducts {A : Type} `{Is1Cat A} `{HasBinaryProducts A}
+  : HasProducts Bool A.
+Proof.
+  intros x.
+  snrapply Build_Product.
+  - exact (cat_binprod (x true) (x false)).
+  - intros [|].
+    + exact cat_pr1.
+    + exact cat_pr2.
+  - intros z f.
+    exact (cat_binprod_corec (f true) (f false)).
   - intros z f [|].
     + apply cat_binprod_beta_pr1.
     + apply cat_binprod_beta_pr2.
@@ -545,16 +565,20 @@ Section BinaryProductsFunctorial.
       + reflexivity.
   Defined.
 
-  Global Instance is0functor_cat_binprod_l' {A : Type} `{HasProducts Bool A}
+  Global Instance is0functor_cat_binprod_l {A : Type} `{HasBinaryProducts A}
     (y : A)
     : Is0Functor (fun x => cat_binprod x y).
   Proof.
     refine (is0functor_homotopic (fun x => cat_prod Bool (bin_functor x y)) _ _).
-    - exact (is0functor_compose (fun x => bin_functor x y) _).
+    - refine (is0functor_compose
+              (fun x => bin_functor x y) (fun x => cat_prod Bool x)).
+      + exact (is0functor_bin_l y).
+      + rapply (is0functor_cat_prod Bool A).
+        exact hasproductsbool_hasbinaryproducts.
     - reflexivity.
   Defined.
 
-  Global Instance is1functor_cat_binprod_l' {A : Type} `{HasProducts Bool A}
+  Global Instance is1functor_cat_binprod_l {A : Type} `{HasBinaryProducts A}
     (y : A)
     : Is1Functor (fun x => cat_binprod x y).
   Proof.
@@ -562,16 +586,20 @@ Section BinaryProductsFunctorial.
     - exact (is1functor_compose (fun x => bin_functor x y) _).
   Defined.
 
-  Global Instance is0functor_cat_binprod_r' {A : Type} `{HasProducts Bool A}
+  Global Instance is0functor_cat_binprod_r {A : Type} `{HasBinaryProducts A}
     (x : A)
     : Is0Functor (fun y => cat_binprod x y).
   Proof.
     refine (is0functor_homotopic (fun y => cat_prod Bool (bin_functor x y)) _ _).
-    - exact (is0functor_compose (fun y => bin_functor x y) _).
+    - refine (is0functor_compose
+              (fun y => bin_functor x y) (fun x => cat_prod Bool x)).
+      + exact (is0functor_bin_r x).
+      + rapply (is0functor_cat_prod Bool A).
+        exact hasproductsbool_hasbinaryproducts.
     - reflexivity.
   Defined.
 
-  Global Instance is1functor_cat_binprod_r' {A : Type} `{HasProducts Bool A}
+  Global Instance is1functor_cat_binprod_r {A : Type} `{HasBinaryProducts A}
     (x : A)
     : Is1Functor (fun y => cat_binprod x y).
   Proof.
@@ -580,89 +608,6 @@ Section BinaryProductsFunctorial.
   Defined.
 
 End BinaryProductsFunctorial.
-
-Global Instance is0functor_cat_binprod_l {A : Type} `{HasBinaryProducts A}
-  (y : A)
-  : Is0Functor (fun x => cat_binprod x y).
-Proof.
-  snrapply Build_Is0Functor.
-  intros a b f.
-  apply cat_binprod_corec.
-  - exact (f $o cat_pr1).
-  - exact cat_pr2.
-Defined.
-
-Global Instance is1functor_cat_binprod_l {A : Type} `{HasBinaryProducts A}
-  (y : A)
-  : Is1Functor (fun x => cat_binprod x y).
-Proof.
-  snrapply Build_Is1Functor.
-  - intros a b f g p.
-    simpl.
-    apply cat_binprod_corec_eta.
-    2: apply Id.
-    exact (p $@R cat_pr1).
-  - intros x.
-    simpl.
-    apply cat_binprod_eta_pr.
-    + refine (cat_binprod_beta_pr1 _ _ $@ _).
-      exact (cat_idl _ $@ (cat_idr _)^$).
-    + refine (cat_binprod_beta_pr2 _ _ $@ _).
-      exact (cat_idr _)^$.
-  - intros x z w f g.
-    simpl.
-    apply cat_binprod_eta_pr.
-    + refine (cat_binprod_beta_pr1 _ _ $@ _).
-      refine (_ $@ cat_assoc _ _ _).
-      refine (_ $@ ((cat_binprod_beta_pr1 _ _)^$ $@R _)).
-      refine (cat_assoc _ _ _ $@ (_ $@L _) $@ (cat_assoc _ _ _)^$).
-      exact (cat_binprod_beta_pr1 _ _)^$.
-    + refine (cat_binprod_beta_pr2 _ _ $@ _).
-      refine (_ $@ cat_assoc _ _ _).
-      refine (_ $@ ((cat_binprod_beta_pr2 _ _)^$ $@R _)).
-      exact (cat_binprod_beta_pr2 _ _)^$.
-Defined.
-
-Global Instance is0functor_cat_binprod_r {A : Type}
-  `{HasBinaryProducts A} x
-  : Is0Functor (fun y => cat_binprod x y).
-Proof.
-  snrapply Build_Is0Functor.
-  intros a b f.
-  apply cat_binprod_corec.
-  - exact cat_pr1.
-  - exact (f $o cat_pr2).
-Defined.
-
-Global Instance is1functor_cat_binprod_r {A : Type}
-  `{HasBinaryProducts A} x
-  : Is1Functor (fun y => cat_binprod x y).
-Proof.
-  snrapply Build_Is1Functor.
-  - intros y z f g p.
-    apply cat_binprod_corec_eta.
-    1: apply Id.
-    exact (p $@R cat_pr2).
-  - intros y. simpl.
-    refine (_ $@ cat_binprod_eta _).
-    apply cat_binprod_corec_eta.
-    + symmetry.
-      apply cat_idr.
-    + exact (cat_idl _ $@ (cat_idr _)^$).
-  - intros y z w f g.
-    simpl.
-    apply cat_binprod_eta_pr.
-    + refine (cat_binprod_beta_pr1 _ _ $@ _).
-      refine (_ $@ cat_assoc _ _ _).
-      refine (_ $@ ((cat_binprod_beta_pr1 _ _)^$ $@R _)).
-      exact (cat_binprod_beta_pr1 _ _)^$.
-    + refine (cat_binprod_beta_pr2 _ _ $@ _).
-      refine (_ $@ cat_assoc _ _ _).
-      refine (_ $@ ((cat_binprod_beta_pr2 _ _)^$ $@R _)).
-      refine (_ $@ (cat_assoc _ _ _)^$).
-      refine (cat_assoc _ _ _ $@ _).
-      exact (_ $@L cat_binprod_beta_pr2 _ _)^$.
-Defined.
 
 (** [cat_binprod_corec] is also functorial in each morphsism. *)
 
@@ -725,12 +670,13 @@ Section Associativity.
       refine (cat_assoc _ _ _ $@ _).
       refine (_ $@L cat_binprod_beta_pr2 _ _ $@ _).
       refine (cat_binprod_beta_pr1 _ _ $@ _).
-      exact (cat_idr _)^$.
+      exact ((cat_idr _)^$ $o (cat_idl _)).
     - refine ((cat_assoc _ _ _)^$ $@ _).
       refine (cat_binprod_beta_pr2 _ _ $@R _ $@ _).
       apply cat_binprod_eta_pr.
       + refine ((cat_assoc _ _ _)^$ $@ _).
         refine (cat_binprod_beta_pr1 _ _ $@R _ $@ _).
+        refine (cat_idl _ $@R _ $@ _).
         refine (cat_binprod_beta_pr1 _ _ $@ _).
         refine (_ $@L _).
         exact (cat_idr _)^$.
