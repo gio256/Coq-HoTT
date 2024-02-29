@@ -74,17 +74,13 @@ Global Instance symmetric_GpdHom' {A} `{Is0Gpd A}
   : Symmetric Hom
   := fun a b f => f^$.
 
-Definition Hom_path {A : Type} `{Is01Cat A} {a b : A} (p : a = b)
-  : (a $-> b).
+Definition Hom_path {A : Type} `{Is01Cat A} {a b : A} (p : a = b) : (a $-> b).
 Proof.
   destruct p; apply Id.
 Defined.
 
-Definition GpdHom_path {A} `{Is0Gpd A} {a b : A} (p : a = b)
-  : a $== b.
-Proof.
-  destruct p; apply Id.
-Defined.
+Definition GpdHom_path {A} `{Is0Gpd A} {a b : A} (p : a = b) : a $== b
+  := Hom_path p.
 
 (** A 0-functor acts on morphisms, but satisfies no axioms. *)
 Class Is0Functor {A B : Type} `{IsGraph A} `{IsGraph B} (F : A -> B)
@@ -168,7 +164,7 @@ Record RetractionOf {A} `{Is1Cat A} {a b : A} (f : a $-> b) :=
   }.
 
 (** Often, the coherences are actually equalities rather than homotopies. *)
-Class Is1Cat_Strong (A : Type)`{!IsGraph A, !Is2Graph A, !Is01Cat A} := 
+Class Is1Cat_Strong (A : Type)`{!IsGraph A, !Is2Graph A, !Is01Cat A} :=
 {
   is01cat_hom_strong : forall (a b : A), Is01Cat (a $-> b) ;
   is0gpd_hom_strong : forall (a b : A), Is0Gpd (a $-> b) ;
@@ -368,29 +364,59 @@ Arguments is1functor_compose {A B C}
   G {is0functor_G} {is1functor_G}
   : rename.
 
+(** This should not be an instance; it can cause the unifier to spin forever searching for functions to be homotopic to. *)
+Definition is0functor_homotopic {A B : Type}
+  (F : A -> B) `{Is0Functor A B F} (G : A -> B) (h : F == G)
+  : Is0Functor G.
+Proof.
+  apply Build_Is0Functor.
+  intros a b f.
+  destruct (h a), (h b).
+  exact (fmap F f).
+Defined.
+
+Definition is1functor_homotopic {A B : Type} (F : A -> B) `{Is1Functor A B F}
+  (G : A -> B) (h : F == G)
+  : @Is1Functor A B _ _ _ _ _ _ _ _ G (is0functor_homotopic F G h).
+Proof.
+  apply Build_Is1Functor.
+  - intros a b f g p.
+    cbn.
+    destruct (h a), (h b).
+    exact (fmap2 F p).
+  - intros a.
+    cbn.
+    destruct (h a).
+    exact (fmap_id F a).
+  - intros a b c f g.
+    cbn.
+    destruct (h a), (h b), (h c).
+    exact (fmap_comp F f g).
+Defined.
+
 (** ** Wild 1-groupoids *)
 
 Class Is1Gpd (A : Type) `{Is1Cat A, !Is0Gpd A} :=
-{ 
+{
   gpd_issect : forall {a b : A} (f : a $-> b), f^$ $o f $== Id a ;
   gpd_isretr : forall {a b : A} (f : a $-> b), f $o f^$ $== Id b ;
 }.
 
 (** Some more convenient equalities for morphisms in a 1-groupoid. The naming scheme is similar to [PathGroupoids.v].*)
 
-Definition gpd_V_hh {A} `{Is1Gpd A} {a b c : A} (f : b $-> c) (g : a $-> b) 
+Definition gpd_V_hh {A} `{Is1Gpd A} {a b c : A} (f : b $-> c) (g : a $-> b)
   : f^$ $o (f $o g) $== g :=
   (cat_assoc _ _ _)^$ $@ (gpd_issect f $@R g) $@ cat_idl g.
 
-Definition gpd_h_Vh {A} `{Is1Gpd A} {a b c : A} (f : c $-> b) (g : a $-> b) 
+Definition gpd_h_Vh {A} `{Is1Gpd A} {a b c : A} (f : c $-> b) (g : a $-> b)
   : f $o (f^$ $o g) $== g :=
   (cat_assoc _ _ _)^$ $@ (gpd_isretr f $@R g) $@ cat_idl g.
 
-Definition gpd_hh_V {A} `{Is1Gpd A} {a b c : A} (f : b $-> c) (g : a $-> b) 
+Definition gpd_hh_V {A} `{Is1Gpd A} {a b c : A} (f : b $-> c) (g : a $-> b)
   : (f $o g) $o g^$ $== f :=
   cat_assoc _ _ _ $@ (f $@L gpd_isretr g) $@ cat_idr f.
 
-Definition gpd_hV_h {A} `{Is1Gpd A} {a b c : A} (f : b $-> c) (g : b $-> a) 
+Definition gpd_hV_h {A} `{Is1Gpd A} {a b c : A} (f : b $-> c) (g : b $-> a)
   : (f $o g^$) $o g $== f :=
   cat_assoc _ _ _ $@ (f $@L gpd_issect g) $@ cat_idr f.
 
@@ -432,13 +458,13 @@ Proof.
 Defined.
 
 Definition gpd_moveR_hV {A : Type} `{Is1Gpd A} {x y z : A} {p : y $-> z}
-  {q : x $-> y} {r : x $-> z} (s : r $== p $o q) 
-  : r $o q^$ $== p 
+  {q : x $-> y} {r : x $-> z} (s : r $== p $o q)
+  : r $o q^$ $== p
   := (s $@R q^$) $@ gpd_hh_V _ _.
 
 Definition gpd_moveR_Vh {A : Type} `{Is1Gpd A} {x y z : A} {p : y $-> z}
-  {q : x $-> y} {r : x $-> z} (s : r $== p $o q) 
-  : p^$ $o r $== q 
+  {q : x $-> y} {r : x $-> z} (s : r $== p $o q)
+  : p^$ $o r $== q
   := (p^$ $@L s) $@ gpd_V_hh _ _.
 
 Definition gpd_moveL_hM {A : Type} `{Is1Gpd A} {x y z : A} {p : y $-> z}
@@ -446,8 +472,8 @@ Definition gpd_moveL_hM {A : Type} `{Is1Gpd A} {x y z : A} {p : y $-> z}
   : r $== p $o q := ((gpd_hV_h _ _)^$ $@ (s $@R _)).
 
 Definition gpd_moveL_hV {A : Type} `{Is1Gpd A} {x y z : A} {p : y $-> z}
-  {q : x $-> y} {r : x $-> z} (s : p $o q $== r) 
-  : p $== r $o q^$ 
+  {q : x $-> y} {r : x $-> z} (s : p $o q $== r)
+  : p $== r $o q^$
   := (gpd_moveR_hV s^$)^$.
 
 Definition gpd_moveL_Mh {A : Type} `{Is1Gpd A} {x y z : A} {p : y $-> z}
@@ -455,8 +481,8 @@ Definition gpd_moveL_Mh {A : Type} `{Is1Gpd A} {x y z : A} {p : y $-> z}
   : r $== p $o q := ((gpd_h_Vh _ _)^$ $@ (p $@L s)).
 
 Definition gpd_moveL_Vh {A : Type} `{Is1Gpd A} {x y z : A} {p : y $-> z}
-  {q : x $-> y} {r : x $-> z} (s : p $o q $== r) 
-  : q $== p^$ $o r 
+  {q : x $-> y} {r : x $-> z} (s : p $o q $== r)
+  : q $== p^$ $o r
   := (gpd_moveR_Vh s^$)^$.
 
 Definition gpd_rev2 {A : Type} `{Is1Gpd A} {x y : A} {p q : x $-> y}
@@ -467,7 +493,7 @@ Proof.
   exact (cat_idl q $@ r^$).
 Defined.
 
-Definition gpd_rev_pp {A} `{Is1Gpd A} {a b c : A} (f : b $-> c) (g : a $-> b) 
+Definition gpd_rev_pp {A} `{Is1Gpd A} {a b c : A} (f : b $-> c) (g : a $-> b)
   : (f $o g)^$ $== g^$ $o f^$.
 Proof.
   apply gpd_moveR_V1.

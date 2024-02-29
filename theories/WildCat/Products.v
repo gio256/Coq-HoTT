@@ -150,7 +150,7 @@ End Lemmata.
 Definition cat_prod_diag {I : Type} {A : Type} (x : A)
   `{Product I _ (fun _ => x)}
   : x $-> cat_prod I (fun _ => x)
-  := cat_prod_corec I (fun _ => Id _).
+  := cat_prod_corec I (fun _ => Id x).
 
 (** *** Uniqueness of products *)
 
@@ -171,9 +171,7 @@ Section Uniqueness.
         refine (_ $o Hom_path (transport_1 _ _)).
         apply Build_Morphism_0Gpd.
         exact (p _).
-    - nrapply equiv_prod_0gpd_corec.
-      intros i.
-      exact ((f i)^-1$ $o prod_0gpd_pr (ie i)).
+    - exact (equiv_prod_0gpd_corec (fun i => (f i)^-1$ $o prod_0gpd_pr (ie i))).
     - intros h j.
       cbn.
       destruct (eisretr ie j).
@@ -269,10 +267,16 @@ Class BinaryProduct {A : Type} `{Is1Cat A} (x y : A)
 Class HasBinaryProducts (A : Type) `{Is1Cat A}
   := has_binary_products :: forall x y : A, BinaryProduct x y.
 
+Global Instance hasbinaryproducts_hasproductsbool {A : Type} `{HasProducts Bool A}
+  : HasBinaryProducts A.
+Proof.
+  intros x y.
+  exact (has_products _).
+Defined.
+
 Section BinaryProducts.
 
   Context {A : Type} `{Is1Cat A} {x y : A} {B : BinaryProduct x y}.
-  (* Context {A : Type} `{Is1Cat A} {x y : A} {B : Product (A:=A) Bool (fun b => if b then x else y)}. *)
 
   Definition cat_binprod : A
     := cat_prod Bool (fun b : Bool => if b then x else y).
@@ -469,10 +473,116 @@ End Symmetry2.
 
 (** Binary products are functorial in each argument. *)
 
-(** TODO: Generalise to indexed products. *)
+Section BinaryProductsFunctorial.
 
-Global Instance is0functor_cat_binprod_l {A : Type}
-  `{HasBinaryProducts A} y
+  Local Instance isgraph_bool_discrete : IsGraph Bool
+    := Build_IsGraph Bool (fun a b => match a, b with
+                          | true, true => Unit
+                          | false, false => Unit
+                          | _, _ => Empty end).
+
+  Local Instance is0functor_bin {A : Type} `{Is01Cat A} (x y : A)
+    : Is0Functor (fun (b : Bool) => if b then x else y).
+  Proof.
+    snrapply Build_Is0Functor.
+    intros [|] [|] []; reflexivity.
+  Defined.
+
+  Definition bin_functor {A : Type} `{Is01Cat A} (x y : A) : Fun01 Bool A
+    := Build_Fun01 Bool A (fun b => if b then x else y).
+
+  Local Instance is0functor_bin_l {A : Type} `{Is1Cat A} (y : A)
+    : Is0Functor (fun x => bin_functor x y).
+  Proof.
+    apply Build_Is0Functor.
+    intros c d f.
+    snrapply Build_NatTrans.
+    - intros [|].
+      + exact f.
+      + reflexivity.
+    - intros [|] [|]; intros [].
+      + exact ((cat_idr _) $@ (cat_idl _)^$).
+      + reflexivity.
+  Defined.
+
+  Local Instance is1functor_bin_l {A : Type} `{Is1Cat A} (y : A)
+    : Is1Functor (fun x => bin_functor x y).
+  Proof.
+    apply Build_Is1Functor.
+    - intros c d f g p [|].
+      + exact p.
+      + reflexivity.
+    - intros c [|]; reflexivity.
+    - intros c d e f g [|].
+      + reflexivity.
+      + exact ((cat_idl _)^$ $o Id _).
+  Defined.
+
+  Local Instance is0functor_bin_r {A : Type} `{Is1Cat A} (x : A)
+    : Is0Functor (fun y => bin_functor x y).
+  Proof.
+    apply Build_Is0Functor.
+    intros c d f.
+    snrapply Build_NatTrans.
+    - intros [|].
+      + reflexivity.
+      + exact f.
+    - intros [|] [|]; intros [].
+      + reflexivity.
+      + exact ((cat_idr _) $@ (cat_idl _)^$).
+  Defined.
+
+  Local Instance is1functor_bin_r {A : Type} `{Is1Cat A} (x : A)
+    : Is1Functor (fun y => bin_functor x y).
+  Proof.
+    apply Build_Is1Functor.
+    - intros c d f g p [|].
+      + reflexivity.
+      + exact p.
+    - intros c [|]; reflexivity.
+    - intros c d e f g [|].
+      + exact ((cat_idl _)^$ $o Id _).
+      + reflexivity.
+  Defined.
+
+  Global Instance is0functor_cat_binprod_l' {A : Type} `{HasProducts Bool A}
+    (y : A)
+    : Is0Functor (fun x => cat_binprod x y).
+  Proof.
+    refine (is0functor_homotopic (fun x => cat_prod Bool (bin_functor x y)) _ _).
+    - exact (is0functor_compose (fun x => bin_functor x y) _).
+    - reflexivity.
+  Defined.
+
+  Global Instance is1functor_cat_binprod_l' {A : Type} `{HasProducts Bool A}
+    (y : A)
+    : Is1Functor (fun x => cat_binprod x y).
+  Proof.
+    refine (is1functor_homotopic (fun x => cat_prod Bool (bin_functor x y)) _ _).
+    - exact (is1functor_compose (fun x => bin_functor x y) _).
+  Defined.
+
+  Global Instance is0functor_cat_binprod_r' {A : Type} `{HasProducts Bool A}
+    (x : A)
+    : Is0Functor (fun y => cat_binprod x y).
+  Proof.
+    refine (is0functor_homotopic (fun y => cat_prod Bool (bin_functor x y)) _ _).
+    - exact (is0functor_compose (fun y => bin_functor x y) _).
+    - reflexivity.
+  Defined.
+
+  Global Instance is1functor_cat_binprod_r' {A : Type} `{HasProducts Bool A}
+    (x : A)
+    : Is1Functor (fun y => cat_binprod x y).
+  Proof.
+    refine (is1functor_homotopic (fun y => cat_prod Bool (bin_functor x y)) _ _).
+    - exact (is1functor_compose (fun y => bin_functor x y) _).
+  Defined.
+
+End BinaryProductsFunctorial.
+
+Global Instance is0functor_cat_binprod_l {A : Type} `{HasBinaryProducts A}
+  (y : A)
   : Is0Functor (fun x => cat_binprod x y).
 Proof.
   snrapply Build_Is0Functor.
@@ -482,8 +592,8 @@ Proof.
   - exact cat_pr2.
 Defined.
 
-Global Instance is1functor_cat_binprod_l {A : Type}
-  `{HasBinaryProducts A} y
+Global Instance is1functor_cat_binprod_l {A : Type} `{HasBinaryProducts A}
+  (y : A)
   : Is1Functor (fun x => cat_binprod x y).
 Proof.
   snrapply Build_Is1Functor.
