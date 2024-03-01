@@ -207,11 +207,11 @@ Section Uniqueness.
 
 End Uniqueness.
 
-Class HasProducts (I A : Type) `{Is1Cat A} :=
-  has_products :: forall x : I -> A, Product I x.
+Class HasProducts (I A : Type) `{Is1Cat A}
+  := has_products :: forall x : I -> A, Product I x.
 
-Class HasAllProducts (A : Type) `{Is1Cat A} :=
-  has_all_products :: forall (I : Type), HasProducts I A.
+Class HasAllProducts (A : Type) `{Is1Cat A}
+  := has_all_products :: forall I : Type, HasProducts I A.
 
 Global Instance is0functor_cat_prod (I : Type) `{IsGraph I}
   (A : Type) `{HasProducts I A}
@@ -269,7 +269,7 @@ Class HasBinaryProducts (A : Type) `{Is1Cat A}
 
 Section BinaryProducts.
 
-  Context {A : Type} `{Is1Cat A} {x y : A} {B : BinaryProduct x y}.
+  Context {A : Type} `{Is1Cat A} {x y : A} `{!BinaryProduct x y}.
 
   Definition cat_binprod : A
     := cat_prod Bool (fun b : Bool => if b then x else y).
@@ -305,8 +305,8 @@ Section BinaryProducts.
     - exact (cat_binprod_beta_pr2 _ _).
   Defined.
 
-  Definition cat_binprod_eta_pr {z : A} (f f' : z $-> cat_binprod)
-    : cat_pr1 $o f $== cat_pr1 $o f' -> cat_pr2 $o f $== cat_pr2 $o f' -> f $== f'.
+  Definition cat_binprod_eta_pr {z : A} (f g : z $-> cat_binprod)
+    : cat_pr1 $o f $== cat_pr1 $o g -> cat_pr2 $o f $== cat_pr2 $o g -> f $== g.
   Proof.
     intros p q.
     rapply cat_prod_pr_eta.
@@ -332,15 +332,13 @@ Arguments cat_binprod {A _ _ _ _} x y {_}.
 (** This is a convenience wrapper for building binary products *)
 Definition Build_BinaryProduct {A : Type} `{Is1Cat A} {x y : A}
   (cat_binprod : A) (cat_pr1 : cat_binprod $-> x) (cat_pr2 : cat_binprod $-> y)
-  (cat_binprod_corec : forall z, z $-> x -> z $-> y -> z $-> cat_binprod)
-  (cat_binprod_beta_pr1 : forall z (f : z $-> x) (g : z $-> y),
+  (cat_binprod_corec : forall z : A, z $-> x -> z $-> y -> z $-> cat_binprod)
+  (cat_binprod_beta_pr1 : forall (z : A) (f : z $-> x) (g : z $-> y),
     cat_pr1 $o cat_binprod_corec z f g $== f)
-  (cat_binprod_beta_pr2 : forall z (f : z $-> x) (g : z $-> y),
+  (cat_binprod_beta_pr2 : forall (z : A) (f : z $-> x) (g : z $-> y),
     cat_pr2 $o cat_binprod_corec z f g $== g)
-  (cat_binprod_eta_pr : forall z (f g : z $-> cat_binprod),
-    cat_pr1 $o f $== cat_pr1 $o g
-    -> cat_pr2 $o f $== cat_pr2 $o g
-    -> f $== g)
+  (cat_binprod_eta_pr : forall (z : A) (f g : z $-> cat_binprod),
+    cat_pr1 $o f $== cat_pr1 $o g -> cat_pr2 $o f $== cat_pr2 $o g -> f $== g)
   : Product Bool (fun b => if b then x else y).
 Proof.
   snrapply (Build_Product _ cat_binprod).
@@ -361,11 +359,8 @@ Proof.
 Defined.
 
 Global Instance hasbinaryproducts_hasproductsbool {A : Type} `{HasProducts Bool A}
-  : HasBinaryProducts A.
-Proof.
-  intros x y.
-  exact (has_products _).
-Defined.
+  : HasBinaryProducts A
+  := fun x y => has_products (fun b : Bool => if b then x else y).
 
 Definition hasproductsbool_hasbinaryproducts {A : Type} `{Is1Cat A} `{HasBinaryProducts A}
   : HasProducts Bool A.
@@ -391,14 +386,14 @@ Defined.
 
 (** We can take the disjoint union of the index set of an indexed product if we have all binary products. This is useful for associating products in a canonical way. This leads to symmetry and associativity of binary products. *)
 
-Definition cat_prod_index_sum {I I' : Type} {A : Type} `{HasBinaryProducts A}
-  (x : I -> A) (y : I' -> A)
-  : Product I x -> Product I' y -> Product (I + I') (sum_rect _ x y).
+Definition cat_prod_index_sum {I J : Type} {A : Type} `{HasBinaryProducts A}
+  (x : I -> A) (y : J -> A)
+  : Product I x -> Product J y -> Product (I + J) (sum_rect _ x y).
 Proof.
   intros p q.
   snrapply Build_Product.
-  - exact (cat_binprod (cat_prod I x) (cat_prod I' y)).
-  - intros [i | i'].
+  - exact (cat_binprod (cat_prod I x) (cat_prod J y)).
+  - intros [i | j].
     + exact (cat_pr _ $o cat_pr1).
     + exact (cat_pr _ $o cat_pr2).
   - intros z f.
@@ -407,7 +402,7 @@ Proof.
       exact (f o inl).
     + apply cat_prod_corec.
       exact (f o inr).
-  - intros z f [i | i'].
+  - intros z f [i | j].
     + refine (cat_assoc _ _ _ $@ _).
       refine ((_ $@L cat_binprod_beta_pr1 _ _) $@ _).
       rapply cat_prod_beta.
@@ -420,8 +415,8 @@ Proof.
       intros i.
       exact ((cat_assoc _ _ _)^$ $@ r (inl i) $@ cat_assoc _ _ _).
     + rapply  cat_prod_pr_eta.
-      intros i'.
-      exact ((cat_assoc _ _ _)^$ $@ r (inr i') $@ cat_assoc _ _ _).
+      intros j.
+      exact ((cat_assoc _ _ _)^$ $@ r (inr j) $@ cat_assoc _ _ _).
 Defined.
 
 (** *** Symmetry of products *)
@@ -462,7 +457,7 @@ Section Symmetry2.
 
   (** Here is an alternative proof of symmetry of products using the symmetry of the indexing set. It has the same action on products but this result is more general since it doesn't require the existence of all products. *)
 
-  Context {A : Type} `{HasEquivs A} (x y : A) (B : BinaryProduct x y).
+  Context {A : Type} `{HasEquivs A} (x y : A) `{!BinaryProduct x y}.
 
   Local Instance product_swap : BinaryProduct y x.
   Proof.
@@ -501,15 +496,12 @@ Section BinaryProductsFunctorial.
                           | false, false => Unit
                           | _, _ => Empty end).
 
-  Local Instance is0functor_bin {A : Type} `{Is01Cat A} (x y : A)
-    : Is0Functor (fun (b : Bool) => if b then x else y).
+  Local Definition bin_functor {A : Type} `{Is01Cat A} (x y : A) : Fun01 Bool A.
   Proof.
+    rapply (Build_Fun01 Bool A (fun b => if b then x else y)).
     snrapply Build_Is0Functor.
     intros [|] [|] []; reflexivity.
   Defined.
-
-  Definition bin_functor {A : Type} `{Is01Cat A} (x y : A) : Fun01 Bool A
-    := Build_Fun01 Bool A (fun b => if b then x else y).
 
   Local Instance is0functor_bin_l {A : Type} `{Is1Cat A} (y : A)
     : Is0Functor (fun x => bin_functor x y).
@@ -520,7 +512,7 @@ Section BinaryProductsFunctorial.
     - intros [|].
       + exact f.
       + reflexivity.
-    - intros [|] [|]; intros [].
+    - intros [|] [|] [].
       + exact ((cat_idr _) $@ (cat_idl _)^$).
       + reflexivity.
   Defined.
@@ -547,7 +539,7 @@ Section BinaryProductsFunctorial.
     - intros [|].
       + reflexivity.
       + exact f.
-    - intros [|] [|]; intros [].
+    - intros [|] [|] [].
       + reflexivity.
       + exact ((cat_idr _) $@ (cat_idl _)^$).
   Defined.
@@ -629,7 +621,7 @@ Proof.
   by apply cat_binprod_corec_eta.
 Defined.
 
-(** Since we use the Yoneda lemma in this file, we therefore depend on WildCat.Universe which means this instance has to therefore live here. *)
+(** Since we use the Yoneda lemma in this file, we therefore depend on WildCat.Universe which means these instances have to live here. *)
 Global Instance hasbinaryproducts_type : HasBinaryProducts Type.
 Proof.
   intros X Y.
@@ -644,6 +636,18 @@ Proof.
     apply path_prod.
     + exact (p x).
     + exact (q x).
+Defined.
+
+Global Instance hasallproducts_type `{Funext} : HasAllProducts Type.
+Proof.
+  intros I x.
+  snrapply Build_Product.
+  - exact (forall (i : I), x i).
+  - intros i f. exact (f i).
+  - intros A f a i. exact (f i a).
+  - reflexivity.
+  - cbn. intros A f g p a.
+    exact (path_forall _ _ (fun i => p i a)).
 Defined.
 
 (** *** Associativity of products *)

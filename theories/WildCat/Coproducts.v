@@ -10,7 +10,7 @@ Require Import WildCat.Core WildCat.ZeroGroupoid WildCat.Equiv WildCat.Yoneda
 Definition cat_coprod_rec_inv {I A : Type} `{Is1Cat A}
   (coprod : A) (x : I -> A) (z : A) (inj : forall i, x i $-> coprod)
   : yon_0gpd z coprod $-> prod_0gpd I (fun i => yon_0gpd z (x i))
-  := cat_prod_corec_inv (A:=A^op) coprod x z inj.
+  := cat_prod_corec_inv (coprod : A^op) x z inj.
 
 Class Coproduct (I : Type) {A : Type} `{Is1Cat A} (x : I -> A)
   := prod_co_coprod :: Product (A:=A^op) I x.
@@ -37,8 +37,12 @@ Definition Build_Coproduct (I : Type) {A : Type} `{Is1Cat A} {x : I -> A}
   (cat_prod_eta_inj : forall (z : A) (f g : cat_coprod $-> z),
     (forall (i : I), f $o cat_inj i $== g $o cat_inj i) -> f $== g)
   : Coproduct I x
-  := Build_Product I (A:=A^op) cat_coprod cat_inj cat_coprod_rec
-      cat_coprod_beta_inj cat_prod_eta_inj.
+  := Build_Product I
+      (cat_coprod : A^op)
+      cat_inj
+      cat_coprod_rec
+      cat_coprod_beta_inj
+      cat_prod_eta_inj.
 
 Section Lemmata.
   Context (I : Type) {A : Type} {x : I -> A} `{Coproduct I _ x}.
@@ -95,8 +99,11 @@ Proof.
   exact (cate_cat_prod (A:=A^op) ie x y (fun i => (e i)^-1$)).
 Defined.
 
-Class HasCoproducts (I A : Type) `{Is1Cat A} :=
-  has_coproducts :: forall x : I -> A, Coproduct I x.
+Class HasCoproducts (I A : Type) `{Is1Cat A}
+  := has_coproducts :: forall x : I -> A, Coproduct I x.
+
+Class HasAllCoproducts (A : Type) `{Is1Cat A}
+  := has_all_coproducts :: forall I : Type, HasCoproducts I A.
 
 Global Instance is0functor_cat_coprod (I : Type) `{IsGraph I}
   (A : Type) `{hc : HasCoproducts I A}
@@ -143,8 +150,8 @@ Proof.
   - exact ((mor_initial_unique z z _)^$ $@ mor_initial_unique z z (Id z)).
 Defined.
 
-Class BinaryCoproduct (A : Type) `{Is1Cat A} (x y : A) :=
-  prod_co_bincoprod :: BinaryProduct (x : A^op) (y : A^op).
+Class BinaryCoproduct (A : Type) `{Is1Cat A} (x y : A)
+  := prod_co_bincoprod :: BinaryProduct (x : A^op) (y : A^op).
 
 Arguments BinaryCoproduct {A _ _ _ _} x y.
 
@@ -168,9 +175,12 @@ Defined.
 Definition Build_BinaryCoproduct {A : Type} `{Is1Cat A} {x y : A}
   (cat_coprod : A) (cat_inl : x $-> cat_coprod) (cat_inr : y $-> cat_coprod)
   (cat_coprod_rec : forall z : A, (x $-> z) -> (y $-> z) -> cat_coprod $-> z)
-  (cat_coprod_beta_inl : forall z (f : x $-> z) (g : y $-> z), cat_coprod_rec z f g $o cat_inl $== f)
-  (cat_coprod_beta_inr : forall z (f : x $-> z) (g : y $-> z), cat_coprod_rec z f g $o cat_inr $== g)
-  (cat_coprod_in_eta : forall z (f g : cat_coprod $-> z), f $o cat_inl $== g $o cat_inl -> f $o cat_inr $== g $o cat_inr -> f $== g)
+  (cat_coprod_beta_inl : forall (z : A) (f : x $-> z) (g : y $-> z),
+    cat_coprod_rec z f g $o cat_inl $== f)
+  (cat_coprod_beta_inr : forall (z : A) (f : x $-> z) (g : y $-> z),
+    cat_coprod_rec z f g $o cat_inr $== g)
+  (cat_coprod_in_eta : forall (z : A) (f g : cat_coprod $-> z),
+    f $o cat_inl $== g $o cat_inl -> f $o cat_inr $== g $o cat_inr -> f $== g)
   : BinaryCoproduct x y
   := Build_BinaryProduct
       (cat_coprod : A^op)
@@ -215,13 +225,13 @@ End Lemmata.
 
 (** *** Categories with binary coproducts *)
 
-Class HasBinaryCoproducts (A : Type) `{Is1Cat A} :=
-  binary_coproducts :: forall x y, BinaryCoproduct x y
-.
+Class HasBinaryCoproducts (A : Type) `{Is1Cat A}
+  := binary_coproducts :: forall x y, BinaryCoproduct x y.
 
 (** ** Symmetry of coproducts *)
 
-Definition cate_bincoprod_swap {A : Type} `{HasEquivs A} {e : HasBinaryCoproducts A} (x y : A)
+Definition cate_bincoprod_swap {A : Type} `{HasEquivs A}
+  {e : HasBinaryCoproducts A} (x y : A)
   : cat_bincoprod x y $<~> cat_bincoprod y x.
 Proof.
   exact (@cate_binprod_swap A^op _ _ _ _ _ e _ _).
@@ -229,7 +239,8 @@ Defined.
 
 (** ** Associativity of coproducts *)
 
-Lemma cate_coprod_assoc {A : Type} `{HasEquivs A} {e : HasBinaryCoproducts A} (x y z : A)
+Lemma cate_coprod_assoc {A : Type} `{HasEquivs A}
+  {e : HasBinaryCoproducts A} (x y z : A)
   : cat_bincoprod x (cat_bincoprod y z) $<~> cat_bincoprod (cat_bincoprod x y) z.
 Proof.
   exact (@cate_binprod_assoc A^op _ _ _ _ _ e x y z)^-1$.
