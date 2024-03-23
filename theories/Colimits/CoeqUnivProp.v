@@ -9,8 +9,14 @@ Require Import WildCat.Displayed.
 Require Import WildCat.Equiv.
 Require Import WildCat.EquivGpd.
 Require Import WildCat.Forall.
+Require Import WildCat.NatTrans.
 Require Import WildCat.Paths.
 Require Import WildCat.ZeroGroupoid.
+
+Require Import Types.Forall.
+Require Import Cubical.DPathSquare.
+
+Local Open Scope dpath_scope.
 
 (** Using wild 0-groupoids, the universal property can be proven without funext.  A simple equivalence of 0-groupoids between [Coeq f g -> P] and [{ h : A -> P & h o f == h o g }] would not carry all the higher-dimensional information, but if we generalize it to dependent functions, then it does suffice. *)
 Section UnivProp.
@@ -38,7 +44,7 @@ Section UnivProp.
 
   Local Instance isgraph_Coeq_ind_map : IsGraph Coeq_ind_map.
   Proof.
-    apply isgraph_forall. intros; apply isgraph_paths.
+    apply isgraph_forall; intros; apply isgraph_paths.
   Defined.
 
   Local Instance is01cat_Coeq_ind_map : Is01Cat Coeq_ind_map.
@@ -153,3 +159,105 @@ Section UnivProp.
   Defined.
 
 End UnivProp.
+
+Section UnivPropNat.
+  Context {B A : Type} (f g : B -> A) {B' A' : Type} (f' g' : B' -> A')
+    (h : B -> B') (k : A -> A') (p : k o f == f' o h) (q : k o g == g' o h)
+    (P : Coeq f' g' -> Type).
+
+  Local Existing Instances
+    isgraph_Coeq_ind_type is01cat_Coeq_ind_type is0gpd_Coeq_ind_type
+    isgraph_Coeq_ind_map is01cat_Coeq_ind_map is0gpd_Coeq_ind_map
+    isdgraph_Coeq_ind_data' isd01cat_Coeq_ind_data' isd0gpd_Coeq_ind_data'
+    isgraph_Coeq_ind_data is01cat_Coeq_ind_data is0gpd_Coeq_ind_data.
+
+  Definition functor_Coeq_ind_data
+    : Coeq_ind_data f' g' P -> Coeq_ind_data f g (P o functor_coeq h k p q).
+  Proof.
+    intros [m r].
+    unfold Coeq_ind_data, Coeq_ind_data', Coeq_ind_map in *.
+    exists (m o k).
+    intros b.
+    apply (dp_compose' _ _ (functor_coeq_beta_cglue h k p q b)).
+    nrefine (_ @Dp r (h b) @Dp _).
+    - nrefine (dp_compose coeq P (p b) _).
+      exact (apD m (p b)).
+    - nrefine (dp_compose coeq P (q b)^ _).
+      exact (apD m (q b)^).
+  Defined.
+
+  Local Instance is0functor_functor_Coeq_ind_data
+    : Is0Functor functor_Coeq_ind_data.
+  Proof.
+    nrapply Build_Is0Functor.
+    intros [m r] [n s] [u v].
+    cbn in u.
+    exists (u o k).
+    unfold DHom, isdgraph_Coeq_ind_data' in *.
+    unfold Coeq_ind_data', Coeq_ind_map, DHom, isdgraph_Coeq_ind_data' in *.
+    intros b.
+    simpl.
+    Check (v o h).
+    rewrite <-!(@dp_apD_compose_rev _ _ coeq P _ _ _ (Coeq_ind P n s)).
+
+    rewrite <-Coeq_ind_beta_cglue.
+    rewrite <-!(dp_apD_pp _ _ (Coeq_ind P n s)).
+    rewrite <-(dp_apD_compose' _ _ (functor_coeq_beta_cglue h k p q b) (Coeq_ind P n s)).
+    rewrite <-!(@dp_apD_compose_rev _ _ coeq P _ _ _ (Coeq_ind P m r)).
+    rewrite <-Coeq_ind_beta_cglue.
+    rewrite <-!(dp_apD_pp _ _ (Coeq_ind P m r)).
+    rewrite <-(dp_apD_compose' _ _ (functor_coeq_beta_cglue h k p q b) (Coeq_ind P m r)).
+
+    apply moveL_Mp.
+    rewrite concat_p_pp.
+    pose (imr:=Coeq_ind P m r o functor_coeq h k p q).
+    pose (ins:=Coeq_ind P n s o functor_coeq h k p q).
+    (* rewrite (@Coeq_ind_beta_cglue B A f g (P o functor_coeq h k p q) (m o k)). *)
+
+    (* lhs apply (@transport_paths_FlFr_D _ _ imr ins _ _ (cglue b) (Coeq_ind_homotopy P m n r s u v _))^. *)
+    lhs apply (@transport_paths_FlFr_D (Coeq f g) _ imr ins _ _ (cglue b) (u (k (f b))))^.
+
+    apply (ds_dp imr ins _ _ _).
+    Check (@dp_apD_nat (Coeq f g) (P o functor_coeq h k p q) imr ins 
+            (coeq (f b)) (coeq (g b)) _ (cglue b)).
+    Check (Coeq_ind (P o functor_coeq h k p q) (m o k)).
+
+    (*Anomaly*)
+    (* Check (@transport_paths_FlFr_D _ _ ind_mr ind_ns _ _ (cglue b) (u (k (f b)))). *)
+    (* Check (Coeq_ind (fun x => ind_mr x = ind_ns x) (u o k)). *)
+    (*Anomaly*)
+
+    Check (Coeq_ind (fun x => imr x = ins x)).
+    Check (Coeq_ind_inv f g (fun x => imr x = ins x)).
+  Abort.
+
+  Definition functor_Coeq_ind_type
+    : Coeq_ind_type f' g' P -> Coeq_ind_type f g (P o functor_coeq h k p q)
+    := fun x => x o functor_coeq h k p q.
+
+  Local Instance is0functor_Coeq_ind_type
+    : Is0Functor functor_Coeq_ind_type.
+  Proof.
+    nrapply Build_Is0Functor.
+    intros m n r c.
+    nrapply r.
+  Defined.
+
+  Definition Coeq_ind_inv_nat
+    : Coeq_ind_inv f g (P o functor_coeq h k p q) o functor_Coeq_ind_type
+      $=> functor_Coeq_ind_data o (Coeq_ind_inv f' g' P).
+  Proof.
+    intros m.
+    exists (fun a => idpath).
+    intros b.
+    simpl.
+    lhs nrapply (concat_1p _).
+    rhs nrapply (concat_p1 _).
+    rhs nrapply (dp_apD_compose' _ _ (functor_coeq_beta_cglue h k p q b) _).
+    nrapply ap.
+    rewrite !dp_apD_pp.
+    rewrite <-!dp_apD_compose_rev.
+    reflexivity.
+  Defined.
+
+End UnivPropNat.
