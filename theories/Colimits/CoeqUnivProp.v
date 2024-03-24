@@ -4,6 +4,8 @@ Require Import Basics.PathGroupoids.
 Require Import Types.Paths.
 Require Import Colimits.Coeq.
 Require Import Cubical.DPath.
+Require Import Cubical.DPathSquare.
+Require Import Extensions.
 Require Import WildCat.Core.
 Require Import WildCat.Displayed.
 Require Import WildCat.Equiv.
@@ -12,11 +14,6 @@ Require Import WildCat.Forall.
 Require Import WildCat.NatTrans.
 Require Import WildCat.Paths.
 Require Import WildCat.ZeroGroupoid.
-
-Require Import Types.Forall.
-Require Import Cubical.DPathSquare.
-
-Local Open Scope dpath_scope.
 
 (** Using wild 0-groupoids, the universal property can be proven without funext.  A simple equivalence of 0-groupoids between [Coeq f g -> P] and [{ h : A -> P & h o f == h o g }] would not carry all the higher-dimensional information, but if we generalize it to dependent functions, then it does suffice. *)
 Section UnivProp.
@@ -165,6 +162,8 @@ Section UnivPropNat.
     (h : B -> B') (k : A -> A') (p : k o f == f' o h) (q : k o g == g' o h)
     (P : Coeq f' g' -> Type).
 
+  Local Open Scope dpath_scope.
+
   Local Existing Instances
     isgraph_Coeq_ind_type is01cat_Coeq_ind_type is0gpd_Coeq_ind_type
     isgraph_Coeq_ind_map is01cat_Coeq_ind_map is0gpd_Coeq_ind_map
@@ -190,46 +189,25 @@ Section UnivPropNat.
     : Is0Functor functor_Coeq_ind_data.
   Proof.
     nrapply Build_Is0Functor.
-    intros [m r] [n s] [u v].
-    cbn in u.
-    exists (u o k).
-    unfold DHom, isdgraph_Coeq_ind_data' in *.
+    intros [m r] [n s] [u v]; simpl.
     unfold Coeq_ind_data', Coeq_ind_map, DHom, isdgraph_Coeq_ind_data' in *.
+    exists (u o k).
     intros b.
-    simpl.
-    Check (v o h).
-    rewrite <-!(@dp_apD_compose_rev _ _ coeq P _ _ _ (Coeq_ind P n s)).
-
+    do 2 rewrite <-(@dp_apD_compose_rev _ _ coeq P _ _ _ (Coeq_ind P n s)).
     rewrite <-Coeq_ind_beta_cglue.
-    rewrite <-!(dp_apD_pp _ _ (Coeq_ind P n s)).
+    do 2 rewrite <-(dp_apD_pp _ _ (Coeq_ind P n s)).
     rewrite <-(dp_apD_compose' _ _ (functor_coeq_beta_cglue h k p q b) (Coeq_ind P n s)).
-    rewrite <-!(@dp_apD_compose_rev _ _ coeq P _ _ _ (Coeq_ind P m r)).
+    do 2 rewrite <-(@dp_apD_compose_rev _ _ coeq P _ _ _ (Coeq_ind P m r)).
     rewrite <-Coeq_ind_beta_cglue.
-    rewrite <-!(dp_apD_pp _ _ (Coeq_ind P m r)).
+    do 2 rewrite <-(dp_apD_pp _ _ (Coeq_ind P m r)).
     rewrite <-(dp_apD_compose' _ _ (functor_coeq_beta_cglue h k p q b) (Coeq_ind P m r)).
-
     apply moveL_Mp.
     rewrite concat_p_pp.
-    pose (imr:=Coeq_ind P m r o functor_coeq h k p q).
-    pose (ins:=Coeq_ind P n s o functor_coeq h k p q).
-    (* rewrite (@Coeq_ind_beta_cglue B A f g (P o functor_coeq h k p q) (m o k)). *)
-
-    (* lhs apply (@transport_paths_FlFr_D _ _ imr ins _ _ (cglue b) (Coeq_ind_homotopy P m n r s u v _))^. *)
-    lhs apply (@transport_paths_FlFr_D (Coeq f g) _ imr ins _ _ (cglue b) (u (k (f b))))^.
-
-    apply (ds_dp imr ins _ _ _).
-    Check (@dp_apD_nat (Coeq f g) (P o functor_coeq h k p q) imr ins 
-            (coeq (f b)) (coeq (g b)) _ (cglue b)).
-    Check (Coeq_ind (P o functor_coeq h k p q) (m o k)).
-
-    (*Anomaly*)
-    (* Check (@transport_paths_FlFr_D _ _ ind_mr ind_ns _ _ (cglue b) (u (k (f b)))). *)
-    (* Check (Coeq_ind (fun x => ind_mr x = ind_ns x) (u o k)). *)
-    (*Anomaly*)
-
-    Check (Coeq_ind (fun x => imr x = ins x)).
-    Check (Coeq_ind_inv f g (fun x => imr x = ins x)).
-  Abort.
+    lhs refine (transport_paths_FlFr_D (cglue b) (Coeq_ind_homotopy P m n r s u v _))^.
+    apply (ds_dp (Coeq_ind P m r o _) (Coeq_ind P n s o _) _ _ _).
+    exact (@dp_apD_nat (Coeq f g) (P o functor_coeq h k p q) _ _ (coeq (f b))
+            (coeq (g b)) (Coeq_ind_homotopy P m n r s u v o _) (cglue b)).
+  Defined.
 
   Definition functor_Coeq_ind_type
     : Coeq_ind_type f' g' P -> Coeq_ind_type f g (P o functor_coeq h k p q)
@@ -249,15 +227,12 @@ Section UnivPropNat.
   Proof.
     intros m.
     exists (fun a => idpath).
-    intros b.
-    simpl.
-    lhs nrapply (concat_1p _).
-    rhs nrapply (concat_p1 _).
+    intros b; simpl.
+    lhs nrapply (concat_1p _); rhs nrapply (concat_p1 _).
     rhs nrapply (dp_apD_compose' _ _ (functor_coeq_beta_cglue h k p q b) _).
     nrapply ap.
-    rewrite !dp_apD_pp.
-    rewrite <-!dp_apD_compose_rev.
-    reflexivity.
+    do 2 rewrite dp_apD_pp.
+    by do 2 rewrite <-dp_apD_compose_rev.
   Defined.
 
 End UnivPropNat.

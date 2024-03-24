@@ -38,6 +38,27 @@ Proof.
   rapply GraphQuotient_ind_beta_gqglue.
 Defined.
 
+Definition Coeq_ind_homotopy {B A f g} (P : @Coeq B A f g -> Type)
+  (m n : forall a, P (coeq a))
+  (r : forall b, (cglue b) # (m (f b)) = m (g b))
+  (s : forall b, (cglue b) # (n (f b)) = n (g b))
+  (u : forall b, m b = n b)
+  (p : forall b, ap (transport P (cglue b)) (u (f b)) @ (s b) = r b @ u (g b))
+  : Coeq_ind P m r == Coeq_ind P n s.
+Proof.
+  rapply Coeq_ind.
+  intros b.
+  pose (imr:=Coeq_ind P m r).
+  pose (ins:=Coeq_ind P n s).
+  lhs refine (@transport_paths_FlFr_D (Coeq f g) P imr ins _ _ (cglue b) _).
+  rewrite Coeq_ind_beta_cglue.
+  rewrite Coeq_ind_beta_cglue.
+  rewrite concat_pp_p.
+  apply moveR_Mp.
+  rewrite inv_V.
+  exact (p b).
+Defined.
+
 Definition Coeq_rec {B A f g} (P : Type) (coeq' : A -> P)
   (cglue' : forall b, coeq' (f b) = coeq' (g b))
   : @Coeq B A f g -> P.
@@ -99,6 +120,15 @@ Proof.
   apply cglue.
 Defined.
 
+(* Definition Coeq_ind_functor_coeq {B A f g B' A' f' g'} *)
+(*            (h : B -> B') (k : A -> A') *)
+(*            (p : k o f == f' o h) (q : k o g == g' o h) *)
+(*            (P : @Coeq B' A' f' g' -> Type) *)
+(*   (coeq' : forall a', P (coeq a')) *)
+(*   (cglue' : forall b', (cglue b') # (coeq' (f' b')) = coeq' (g' b')) *)
+(* : Coeq_ind P coeq' cglue' o functor_coeq h k p q *) 
+(*   == @Coeq_ind B A f g (P o functor_coeq h k p q) (coeq' o k) (cglue' o h). *)
+
 Definition functor_coeq_beta_cglue {B A f g B' A' f' g'}
            (h : B -> B') (k : A -> A')
            (p : k o f == f' o h) (q : k o g == g' o h)
@@ -138,6 +168,7 @@ Definition functor_coeq_homotopy {B A f g B' A' f' g'}
 : functor_coeq h k p q == functor_coeq h' k' p' q'.
 Proof.
   refine (Coeq_ind _ (fun a => ap coeq (s a)) _); cbn; intros b.
+  Show Proof.
   refine (transport_paths_FlFr (cglue b) _ @ _).
   rewrite concat_pp_p; apply moveR_Vp.
   rewrite !functor_coeq_beta_cglue.
