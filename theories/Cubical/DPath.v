@@ -301,6 +301,18 @@ Definition dp_apD_compose {A B : Type} (f : A -> B) (P : B -> Type)
   : apD (g o f) p = (dp_compose f P p)^-1 (apD g (ap f p))
   := dp_apD_compose' f P (idpath (ap f p)) g.
 
+Definition dp_apD_compose_inv' {A B : Type} (f : A -> B) (P : B -> Type)
+  {x y : A} {p : x = y} {q : f x = f y} (r : ap f p = q) (g : forall b:B, P b)
+  : apD g q = (dp_compose' f P r) (apD (g o f) p).
+Proof.
+  by destruct r, p.
+Defined.
+
+Definition dp_apD_compose_inv {A B : Type} (f : A -> B) (P : B -> Type)
+  {x y : A} {p : x = y} (g : forall b:B, P b)
+  : apD g (ap f p) = (dp_compose f P p) (apD (g o f) p)
+  := dp_apD_compose_inv' f P (idpath (ap f p)) g.
+
 (** Type constructors *)
 
 (** Many of these lemmas exist already for transports but we prove them for
