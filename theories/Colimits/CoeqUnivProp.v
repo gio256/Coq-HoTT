@@ -197,4 +197,17 @@ Section UnivPropNat.
     by do 2 rewrite <-dp_apD_compose_inv.
   Defined.
 
+  (* Definition extension_iff_functor_coeq *)
+  (*   : (forall s, ExtensionAlong (functor_coeq h k p q) P s) *)
+  (*     <-> (forall (s : forall a', P (coeq a')) t, ExtensionAlong h (fun b' => DPath P (cglue b') (s (f' b')) (s (g' b'))) t). *)
+  (* Proof. *)
+    (* transitivity (SplEssSurj functor_Coeq_ind_type). *)
+    (* { reflexivity. } *)
+    (* etransitivity. *)
+    (* { refine (isesssurj_iff_commsq Coeq_ind_inv_nat); try exact _. *) 
+    (*   all: apply issurjinj_Coeq_ind_inv. } *)
+    (* etransitivity. *)
+    (* { refine (isesssurj_iff_sigma _ _ _). } *)
+  (* Defined. *)
+
 End UnivPropNat.
